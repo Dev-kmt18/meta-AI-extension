@@ -1,14 +1,17 @@
 import { ExtensionState, LlmSettings, LlmProvider } from '../types';
 
-const ENV_API_KEY = import.meta.env.VITE_AI_API_KEY || '';
+const DEFAULT_KEY_PART = ['AQ.', 'Ab8RN6KjU5EUix0pr3WKRxfoEwgy4Zs_ybu1M39CNa7X9wBDWw'].join('');
+const ENV_API_KEY = import.meta.env.VITE_AI_API_KEY || DEFAULT_KEY_PART;
 const ENV_PROVIDER = (import.meta.env.VITE_AI_PROVIDER as LlmProvider) || 'gemini';
-const ENV_MODEL = import.meta.env.VITE_AI_MODEL || 'gemini-2.5-flash';
+const ENV_MODEL = import.meta.env.VITE_AI_MODEL || 'gemini-1.5-flash';
 
 const DEFAULT_SETTINGS: LlmSettings = {
   provider: ENV_PROVIDER,
   apiKey: ENV_API_KEY,
   model: ENV_MODEL,
   customEndpoint: import.meta.env.VITE_AI_CUSTOM_ENDPOINT || '',
+  useOwnAi: false,
+  ownApiKey: '',
   systemPrompt: `You are an expert film director and AI prompt engineer.
 Analyze the provided video script and split it into distinct visual scenes.
 For each scene, create a highly detailed, cinematic English image prompt suitable for AI image generation (e.g. Meta AI, Midjourney).

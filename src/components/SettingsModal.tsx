@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { X, Key, Cpu, Server, Save, Check } from 'lucide-react';
-import { LlmProvider, LlmSettings } from '../types';
+import { X, Key, Cpu, Save, Check } from 'lucide-react';
+import { LlmSettings } from '../types';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -9,34 +9,20 @@ interface SettingsModalProps {
   onSave: (newSettings: LlmSettings) => void;
 }
 
-const PROVIDER_OPTIONS: { id: LlmProvider; name: string; defaultModel: string }[] = [
-  { id: 'gemini', name: 'Google Gemini', defaultModel: 'gemini-2.5-flash' },
-  { id: 'openai', name: 'OpenAI', defaultModel: 'gpt-4o-mini' },
-  { id: 'claude', name: 'Anthropic Claude', defaultModel: 'claude-3-5-haiku-20241022' },
-  { id: 'groq', name: 'Groq', defaultModel: 'llama-3.3-70b-versatile' },
-  { id: 'openrouter', name: 'OpenRouter', defaultModel: 'google/gemini-2.5-flash' },
-  { id: 'custom', name: 'Custom REST API', defaultModel: 'custom-model' },
-];
-
 export const SettingsModal: React.FC<SettingsModalProps> = ({
   isOpen,
   onClose,
   settings,
   onSave
 }) => {
-  const [form, setForm] = useState<LlmSettings>({ ...settings });
+  const [form, setForm] = useState<LlmSettings>({
+    ...settings,
+    useOwnAi: settings.useOwnAi || false,
+    ownApiKey: settings.ownApiKey || ''
+  });
   const [savedSuccess, setSavedSuccess] = useState(false);
 
   if (!isOpen) return null;
-
-  const handleProviderChange = (provider: LlmProvider) => {
-    const defaultModel = PROVIDER_OPTIONS.find((p) => p.id === provider)?.defaultModel || '';
-    setForm((prev) => ({
-      ...prev,
-      provider,
-      model: prev.model || defaultModel
-    }));
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +36,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden text-slate-200">
+      <div className="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden text-slate-200">
+        {/* Modal Header */}
         <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-900/50">
           <div className="flex items-center gap-2">
             <Cpu className="w-5 h-5 text-blue-400" />
@@ -64,92 +51,61 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
-          {/* Provider selector */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-              AI Provider
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {PROVIDER_OPTIONS.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => handleProviderChange(p.id)}
-                  className={`flex items-center justify-between p-3 rounded-xl border text-xs font-medium transition ${
-                    form.provider === p.id
-                      ? 'bg-blue-600/20 border-blue-500 text-blue-300 shadow-sm'
-                      : 'bg-slate-800/60 border-slate-700/80 text-slate-300 hover:bg-slate-800 hover:text-white'
-                  }`}
-                >
-                  <span>{p.name}</span>
-                  {form.provider === p.id && <Check className="w-4 h-4 text-blue-400" />}
-                </button>
-              ))}
+        {/* Form Body */}
+        <form onSubmit={handleSubmit} className="p-5 space-y-5 max-h-[80vh] overflow-y-auto">
+          {/* Use Own AI Checkbox/Toggle */}
+          <div className="flex items-start justify-between p-3.5 bg-slate-800/40 border border-slate-800 rounded-xl hover:border-slate-700/80 transition duration-150">
+            <div className="flex-1 pr-3">
+              <label className="block text-xs font-bold text-slate-200 uppercase tracking-wider cursor-pointer">
+                Use your own AI for analysis
+              </label>
+              <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                Enable this to enter your own API key. Otherwise, the extension will use the built-in default AI automatically.
+              </p>
+            </div>
+            <div className="flex items-center h-5">
+              <input
+                id="useOwnAi"
+                type="checkbox"
+                checked={form.useOwnAi}
+                onChange={(e) => setForm({ ...form, useOwnAi: e.target.checked })}
+                className="w-4.5 h-4.5 text-blue-600 rounded bg-slate-900 border-slate-700 focus:ring-blue-500 focus:ring-offset-slate-900 cursor-pointer"
+              />
             </div>
           </div>
 
-          {/* API Key */}
-          {form.provider !== 'custom' && (
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-                API Key
+          {/* Conditional API Key Input */}
+          {form.useOwnAi && (
+            <div className="space-y-1.5 animate-fadeIn">
+              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                Your API Key
               </label>
               <div className="relative">
                 <input
                   type="password"
-                  value={form.apiKey}
-                  onChange={(e) => setForm({ ...form, apiKey: e.target.value })}
-                  placeholder={`Enter your ${form.provider.toUpperCase()} API key...`}
+                  value={form.ownApiKey}
+                  onChange={(e) => setForm({ ...form, ownApiKey: e.target.value })}
+                  placeholder="Enter API key (starts with sk-, gsk_, etc.)"
                   className="w-full pl-9 pr-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  required
                 />
-                <Key className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                <Key className="w-4 h-4 text-slate-400 absolute left-3 top-3.5" />
               </div>
-            </div>
-          )}
-
-          {/* Model Name */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-              Model Name
-            </label>
-            <input
-              type="text"
-              value={form.model}
-              onChange={(e) => setForm({ ...form, model: e.target.value })}
-              placeholder="e.g. gemini-2.5-flash, gpt-4o-mini, llama-3.3-70b"
-              className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-            />
-          </div>
-
-          {/* Custom Endpoint URL */}
-          {(form.provider === 'custom' || form.provider === 'openai') && (
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
-                Endpoint URL {form.provider === 'openai' ? '(Optional Base URL)' : '(Required)'}
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={form.customEndpoint || ''}
-                  onChange={(e) => setForm({ ...form, customEndpoint: e.target.value })}
-                  placeholder="https://api.yourcustomserver.com/v1/chat/completions"
-                  className="w-full pl-9 pr-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                />
-                <Server className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-              </div>
+              <p className="text-[10px] text-slate-500 leading-normal">
+                💡 Provider and model will be automatically detected based on the prefix of your API key.
+              </p>
             </div>
           )}
 
           {/* Download Naming Format */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+          <div className="space-y-1.5">
+            <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
               Image Download Naming Format
             </label>
             <select
               value={form.fileNamePattern || 'number_only'}
               onChange={(e) => setForm({ ...form, fileNamePattern: e.target.value as any })}
-              className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-blue-500 cursor-pointer font-medium"
             >
               <option value="number_only">1.png, 2.png, 3.png (Numbers Only)</option>
               <option value="padded_num">01.png, 02.png, 03.png (Padded Numbers)</option>
@@ -158,7 +114,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
 
           {/* Submit Action */}
-          <div className="pt-2 flex items-center justify-end gap-3 border-t border-slate-800">
+          <div className="pt-3 flex items-center justify-end gap-3 border-t border-slate-800">
             <button
               type="button"
               onClick={onClose}

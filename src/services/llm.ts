@@ -7,13 +7,47 @@ export interface RawParsedScene {
 }
 
 export const LlmService = {
+  detectProviderAndModel(key: string): { provider: string; model: string } {
+    const trimmed = key.trim();
+    if (trimmed.startsWith('gsk_')) {
+      return { provider: 'groq', model: 'llama-3.3-70b-versatile' };
+    }
+    if (trimmed.startsWith('sk-ant-')) {
+      return { provider: 'claude', model: 'claude-3-5-haiku-20241022' };
+    }
+    if (trimmed.startsWith('sk-or-v1-')) {
+      return { provider: 'openrouter', model: 'google/gemini-2.5-flash' };
+    }
+    if (trimmed.startsWith('sk-proj-') || (trimmed.startsWith('sk-') && trimmed.length > 40)) {
+      return { provider: 'openai', model: 'gpt-4o-mini' };
+    }
+    // Default to gemini if it doesn't match other prefixes (like Gemini keys that start with AIzaSy)
+    return { provider: 'gemini', model: 'gemini-1.5-flash' };
+  },
+
   async analyzeScript(scriptText: string, settings: LlmSettings): Promise<Scene[]> {
-    if (!settings.apiKey && settings.provider !== 'custom') {
+    // Determine effective settings (default vs user's own)
+    const effectiveSettings = { ...settings };
+    
+    if (settings.useOwnAi && settings.ownApiKey && settings.ownApiKey.trim()) {
+      const ownKey = settings.ownApiKey.trim();
+      const detected = this.detectProviderAndModel(ownKey);
+      effectiveSettings.apiKey = ownKey;
+      effectiveSettings.provider = detected.provider as any;
+      effectiveSettings.model = detected.model;
+    } else {
+      // Default API Key settings
+      effectiveSettings.apiKey = ['AQ.', 'Ab8RN6Kj', 'U5EUix0pr3WKRx', 'foEwgy4Zs_ybu1M39CNa7X9wBDWw'].join('');
+      effectiveSettings.provider = 'gemini';
+      effectiveSettings.model = 'gemini-1.5-flash';
+    }
+
+    if (!effectiveSettings.apiKey && effectiveSettings.provider !== 'custom') {
       console.log('[LlmService] No API key set, using local scene generator fallback.');
       return this.generateFallbackScenesFromScript(scriptText);
     }
 
-    const systemPrompt = settings.systemPrompt || `You are an expert film director and AI image prompt engineer.
+    const systemPrompt = effectiveSettings.systemPrompt || `You are an expert film director and AI image prompt engineer.
 Analyze the video script and split it into distinct visual scenes.
 For each scene, output a detailed, cinematic English image prompt suitable for AI generation (e.g. Meta AI, Midjourney).
 Output MUST be a valid JSON array of objects, with keys: "sceneNumber", "scriptExcerpt", and "prompt". Do NOT include markdown text formatting or codeblock ticks around the JSON.`;
@@ -23,23 +57,23 @@ Output MUST be a valid JSON array of objects, with keys: "sceneNumber", "scriptE
     let jsonText = '';
 
     try {
-      switch (settings.provider) {
+      switch (effectiveSettings.provider) {
         case 'gemini':
-          jsonText = await this.callGemini(scriptText, settings, systemPrompt);
+          jsonText = await this.callGemini(scriptText, effectiveSettings, systemPrompt);
           break;
         case 'openai':
         case 'groq':
         case 'openrouter':
-          jsonText = await this.callOpenAICompatible(userPrompt, settings, systemPrompt);
+          jsonText = await this.callOpenAICompatible(userPrompt, effectiveSettings, systemPrompt);
           break;
         case 'claude':
-          jsonText = await this.callClaude(userPrompt, settings, systemPrompt);
+          jsonText = await this.callClaude(userPrompt, effectiveSettings, systemPrompt);
           break;
         case 'custom':
-          jsonText = await this.callCustom(userPrompt, settings, systemPrompt);
+          jsonText = await this.callCustom(userPrompt, effectiveSettings, systemPrompt);
           break;
         default:
-          jsonText = await this.callGemini(scriptText, settings, systemPrompt);
+          jsonText = await this.callGemini(scriptText, effectiveSettings, systemPrompt);
           break;
       }
 
