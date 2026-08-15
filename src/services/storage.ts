@@ -12,6 +12,9 @@ const DEFAULT_SETTINGS: LlmSettings = {
   customEndpoint: import.meta.env.VITE_AI_CUSTOM_ENDPOINT || '',
   useOwnAi: false,
   ownApiKey: '',
+  imageStyle: 'Cinematic',
+  imageFrame: 'Landscape (16:9)',
+  sceneCount: 5,
   systemPrompt: `You are an expert film director and AI prompt engineer.
 Analyze the provided video script and split it into distinct visual scenes.
 For each scene, create a highly detailed, cinematic English image prompt suitable for AI image generation (e.g. Meta AI, Midjourney).

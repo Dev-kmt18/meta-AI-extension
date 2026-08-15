@@ -9,6 +9,9 @@ export interface LlmSettings {
   fileNamePattern?: 'number_only' | 'scene_num' | 'padded_num'; // e.g. '1.png', 'scene-01.png', '01.png'
   useOwnAi?: boolean;
   ownApiKey?: string;
+  imageStyle?: string;
+  imageFrame?: string;
+  sceneCount?: number;
 }
 
 export type SceneStatus = 'pending' | 'generating' | 'completed' | 'failed';

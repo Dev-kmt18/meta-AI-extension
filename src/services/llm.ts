@@ -44,12 +44,24 @@ export const LlmService = {
 
     if (!effectiveSettings.apiKey && effectiveSettings.provider !== 'custom') {
       console.log('[LlmService] No API key set, using local scene generator fallback.');
-      return this.generateFallbackScenesFromScript(scriptText);
+      return this.generateFallbackScenesFromScript(scriptText, effectiveSettings.sceneCount, effectiveSettings.imageStyle, effectiveSettings.imageFrame);
     }
 
-    const systemPrompt = effectiveSettings.systemPrompt || `You are an expert film director and AI image prompt engineer.
-Analyze the video script and split it into distinct visual scenes.
-For each scene, output a detailed, cinematic English image prompt suitable for AI generation (e.g. Meta AI, Midjourney).
+    let styleInstructions = '';
+    if (effectiveSettings.imageStyle) {
+      styleInstructions += `\n- The visual style for all image prompts MUST be: "${effectiveSettings.imageStyle}" (e.g. realistic, funny, horror, colorful, stick man, etc.).`;
+    }
+    if (effectiveSettings.imageFrame) {
+      styleInstructions += `\n- The aspect ratio/frame for all image prompts MUST be: "${effectiveSettings.imageFrame}" (e.g., aspect ratio 16:9, aspect ratio 9:16, 1:1, etc.). Include the aspect ratio tag at the end of the prompt if appropriate.`;
+    }
+    if (effectiveSettings.sceneCount) {
+      styleInstructions += `\n- You MUST divide the provided script into EXACTLY ${effectiveSettings.sceneCount} distinct visual scenes.`;
+    }
+
+    const systemPrompt = `You are an expert film director and AI image prompt engineer.
+Analyze the video script and split it into distinct visual scenes.${styleInstructions}
+For each scene, output a highly detailed, descriptive, rich, and creative English image prompt suitable for AI generation (like Meta AI).
+The prompt should be very descriptive, detailing the character expressions, setting, actions, lighting, camera angle, and mood. Avoid simple short prompts. Do not make prompts short or generic!
 Output MUST be a valid JSON array of objects, with keys: "sceneNumber", "scriptExcerpt", and "prompt". Do NOT include markdown text formatting or codeblock ticks around the JSON.`;
 
     const userPrompt = `Script:\n${scriptText}`;
@@ -77,11 +89,11 @@ Output MUST be a valid JSON array of objects, with keys: "sceneNumber", "scriptE
           break;
       }
 
-      return this.parseScenesFromJson(jsonText, scriptText);
+      return this.parseScenesFromJson(jsonText, scriptText, effectiveSettings.sceneCount, effectiveSettings.imageStyle, effectiveSettings.imageFrame);
     } catch (err: any) {
       console.warn('API call failed, generating fallback scenes from script:', err);
       // Fallback local scene generator if API fails
-      return this.generateFallbackScenesFromScript(scriptText);
+      return this.generateFallbackScenesFromScript(scriptText, effectiveSettings.sceneCount, effectiveSettings.imageStyle, effectiveSettings.imageFrame);
     }
   },
 
@@ -239,7 +251,7 @@ Output MUST be a valid JSON array of objects, with keys: "sceneNumber", "scriptE
     return JSON.stringify(data);
   },
 
-  parseScenesFromJson(rawJsonString: string, originalScript: string): Scene[] {
+  parseScenesFromJson(rawJsonString: string, originalScript: string, sceneCount = 5, style = 'Cinematic', frame = 'Landscape (16:9)'): Scene[] {
     let cleanJson = rawJsonString.trim();
     
     if (cleanJson.startsWith('```')) {
@@ -273,11 +285,16 @@ Output MUST be a valid JSON array of objects, with keys: "sceneNumber", "scriptE
       }));
 
     } catch (e: any) {
-      return this.generateFallbackScenesFromScript(originalScript);
+      return this.generateFallbackScenesFromScript(originalScript, sceneCount, style, frame);
     }
   },
 
-  generateFallbackScenesFromScript(scriptText: string): Scene[] {
+  generateFallbackScenesFromScript(
+    scriptText: string,
+    sceneCount = 5,
+    style = 'Cinematic',
+    frame = 'Landscape (16:9)'
+  ): Scene[] {
     // Split script by sentences or paragraphs into scenes
     const lines = scriptText
       .split(/\n+|\. /)
@@ -285,25 +302,47 @@ Output MUST be a valid JSON array of objects, with keys: "sceneNumber", "scriptE
       .filter((l) => l.length > 5);
 
     if (lines.length === 0) {
-      return [
-        {
-          id: `scene-${Date.now()}-0`,
-          sceneNumber: 1,
-          scriptExcerpt: scriptText.slice(0, 100),
-          prompt: `Cinematic photorealistic 8k highly detailed visual representation of: ${scriptText.slice(0, 200)}`,
-          status: 'pending',
-          selected: true
-        }
-      ];
+      return Array.from({ length: sceneCount }, (_, index) => ({
+        id: `scene-${Date.now()}-${index}`,
+        sceneNumber: index + 1,
+        scriptExcerpt: `Excerpt Part ${index + 1}`,
+        prompt: `Cinematic photo, 8k, highly detailed visual scene showing part ${index + 1} of the script in ${style} style, aspect ratio ${frame}`,
+        status: 'pending',
+        selected: true
+      }));
     }
 
-    return lines.map((line, index) => ({
-      id: `scene-${Date.now()}-${index}`,
-      sceneNumber: index + 1,
-      scriptExcerpt: line,
-      prompt: `Cinematic photorealistic 8k highly detailed visual scene showing: ${line}`,
-      status: 'pending',
-      selected: true
-    }));
+    // Group lines into exact sceneCount chunks
+    const chunkCount = Math.min(sceneCount, lines.length);
+    const scenesPerChunk = Math.ceil(lines.length / chunkCount);
+    const result: Scene[] = [];
+
+    for (let i = 0; i < chunkCount; i++) {
+      const chunkSentences = lines.slice(i * scenesPerChunk, (i + 1) * scenesPerChunk);
+      const excerpt = chunkSentences.join('. ');
+      result.push({
+        id: `scene-${Date.now()}-${i}`,
+        sceneNumber: i + 1,
+        scriptExcerpt: excerpt.slice(0, 150) + (excerpt.length > 150 ? '...' : ''),
+        prompt: `Cinematic photo, 8k, highly detailed visual scene showing: ${excerpt}. Visual style is ${style}, aspect ratio is ${frame}`,
+        status: 'pending',
+        selected: true
+      });
+    }
+
+    // Pad if result has fewer scenes than requested
+    while (result.length < sceneCount) {
+      const idx = result.length;
+      result.push({
+        id: `scene-${Date.now()}-${idx}`,
+        sceneNumber: idx + 1,
+        scriptExcerpt: `Additional scene detail for script`,
+        prompt: `Cinematic photo, 8k, highly detailed visual scene showing additional narrative details in ${style} style, aspect ratio ${frame}`,
+        status: 'pending',
+        selected: true
+      });
+    }
+
+    return result;
   }
 };

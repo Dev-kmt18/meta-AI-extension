@@ -7,6 +7,13 @@ interface ScriptInputProps {
   onAnalyze: () => void;
   isAnalyzing: boolean;
   onClear: () => void;
+  
+  imageStyle: string;
+  onStyleChange: (style: string) => void;
+  imageFrame: string;
+  onFrameChange: (frame: string) => void;
+  sceneCount: number;
+  onSceneCountChange: (count: number) => void;
 }
 
 export const ScriptInput: React.FC<ScriptInputProps> = ({
@@ -14,7 +21,13 @@ export const ScriptInput: React.FC<ScriptInputProps> = ({
   onScriptChange,
   onAnalyze,
   isAnalyzing,
-  onClear
+  onClear,
+  imageStyle,
+  onStyleChange,
+  imageFrame,
+  onFrameChange,
+  sceneCount,
+  onSceneCountChange
 }) => {
   const handlePaste = async () => {
     try {
@@ -29,6 +42,7 @@ export const ScriptInput: React.FC<ScriptInputProps> = ({
 
   return (
     <div className="bg-slate-800/80 border border-slate-700/70 rounded-2xl p-4 shadow-lg space-y-3">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-slate-200 font-semibold text-xs uppercase tracking-wider">
           <FileText className="w-4 h-4 text-blue-400" />
@@ -54,6 +68,7 @@ export const ScriptInput: React.FC<ScriptInputProps> = ({
         </div>
       </div>
 
+      {/* Input Textarea */}
       <div className="relative">
         <textarea
           value={scriptText}
@@ -66,6 +81,70 @@ export const ScriptInput: React.FC<ScriptInputProps> = ({
         </div>
       </div>
 
+      {/* Settings Grid */}
+      <div className="grid grid-cols-3 gap-3 bg-slate-900/40 p-3 rounded-xl border border-slate-700/40">
+        {/* Style Dropdown */}
+        <div className="space-y-1">
+          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            Image Style
+          </label>
+          <select
+            value={imageStyle}
+            onChange={(e) => onStyleChange(e.target.value)}
+            className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500 font-medium cursor-pointer"
+          >
+            <option value="Cinematic">Cinematic</option>
+            <option value="Horror">Horror 👻</option>
+            <option value="Funny">Funny 😂</option>
+            <option value="Colorful">Colorful 🌈</option>
+            <option value="Stick Man">Stick Man ✏️</option>
+            <option value="Realistic">Realistic 📸</option>
+            <option value="Anime / Manga">Anime 🌸</option>
+            <option value="3D Pixar / Disney">3D Render 🎨</option>
+            <option value="Watercolor Painting">Watercolor 🖌️</option>
+            <option value="Cyberpunk">Cyberpunk 🏙️</option>
+          </select>
+        </div>
+
+        {/* Frame / Aspect Ratio Dropdown */}
+        <div className="space-y-1">
+          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            Image Frame
+          </label>
+          <select
+            value={imageFrame}
+            onChange={(e) => onFrameChange(e.target.value)}
+            className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500 font-medium cursor-pointer"
+          >
+            <option value="Landscape (16:9)">Landscape (16:9)</option>
+            <option value="Portrait (9:16)">Portrait (9:16)</option>
+            <option value="Square (1:1)">Square (1:1)</option>
+            <option value="Wide (21:9)">Wide (21:9)</option>
+          </select>
+        </div>
+
+        {/* Number of Images */}
+        <div className="space-y-1">
+          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            No. of Images
+          </label>
+          <select
+            value={sceneCount}
+            onChange={(e) => onSceneCountChange(parseInt(e.target.value, 10))}
+            className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500 font-medium cursor-pointer"
+          >
+            <option value={3}>3 Scenes</option>
+            <option value={5}>5 Scenes</option>
+            <option value={8}>8 Scenes</option>
+            <option value={10}>10 Scenes</option>
+            <option value={12}>12 Scenes</option>
+            <option value={15}>15 Scenes</option>
+            <option value={20}>20 Scenes</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Action Button */}
       <button
         onClick={onAnalyze}
         disabled={isAnalyzing || !scriptText.trim()}

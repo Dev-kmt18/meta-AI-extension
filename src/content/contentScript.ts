@@ -20,45 +20,25 @@ function getChatInput(): HTMLElement | null {
   return null;
 }
 
-// ─── Type text into the chat input using clipboard paste (most reliable for React/Lexical) ───
+// ─── Type text into the chat input using execCommand insertText or events ───
 async function typeIntoInput(inputEl: HTMLElement, text: string): Promise<boolean> {
   inputEl.focus();
   await sleep(100);
 
-  // Approach 1: Use Clipboard API to paste (works best with Lexical editors)
+  // Clear existing text first
   try {
-    // Select all existing text first
-    const selection = window.getSelection();
-    const range = document.createRange();
-    range.selectNodeContents(inputEl);
-    selection?.removeAllRanges();
-    selection?.addRange(range);
-    await sleep(50);
-
-    // Write to clipboard then paste
-    await navigator.clipboard.writeText(text);
-    document.execCommand('paste');
-    await sleep(200);
-
-    const currentText = inputEl.textContent || (inputEl as any).value || '';
-    if (currentText.trim().length > 0) {
-      console.log('[MAISG] Clipboard paste succeeded');
-      return true;
-    }
-  } catch (e) {
-    console.warn('[MAISG] Clipboard paste failed:', e);
-  }
-
-  // Approach 2: execCommand insertText
-  try {
-    inputEl.focus();
-    // Clear existing
     document.execCommand('selectAll', false, undefined);
     document.execCommand('delete', false, undefined);
     await sleep(50);
+  } catch (e) {
+    console.warn('[MAISG] Clear failed:', e);
+  }
 
+  // Approach 1: execCommand insertText (most reliable & synchronous for rich contenteditable)
+  try {
     const success = document.execCommand('insertText', false, text);
-    if (success) {
+    const val = inputEl.textContent || '';
+    if (success && val.trim().length > 0) {
       console.log('[MAISG] execCommand insertText succeeded');
       return true;
     }
@@ -66,31 +46,39 @@ async function typeIntoInput(inputEl: HTMLElement, text: string): Promise<boolea
     console.warn('[MAISG] execCommand insertText failed:', e);
   }
 
-  // Approach 3: Simulate key-by-key input events (synthetic typing)
+  // Approach 2: Direct DOM set + Dispatch Input Events (Lexical compatible fallback)
   try {
-    inputEl.focus();
-    inputEl.textContent = '';
-    await sleep(50);
-
-    // Set via innerHTML for contenteditable
     if (inputEl.isContentEditable) {
       inputEl.innerHTML = `<p>${text}</p>`;
     } else if (inputEl instanceof HTMLTextAreaElement) {
-      const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
-      if (setter) setter.call(inputEl, text);
-      else inputEl.value = text;
+      inputEl.value = text;
     }
-
-    // Fire React-compatible synthetic events
     inputEl.dispatchEvent(new Event('focus', { bubbles: true }));
     inputEl.dispatchEvent(new InputEvent('beforeinput', { inputType: 'insertText', data: text, bubbles: true, composed: true, cancelable: true }));
     inputEl.dispatchEvent(new InputEvent('input', { inputType: 'insertText', data: text, bubbles: true, composed: true }));
     inputEl.dispatchEvent(new Event('change', { bubbles: true }));
-
-    console.log('[MAISG] Direct DOM set + synthetic events dispatched');
-    return true;
+    
+    const val = inputEl.textContent || '';
+    if (val.trim().length > 0) {
+      console.log('[MAISG] Direct DOM set + events succeeded');
+      return true;
+    }
   } catch (e) {
     console.warn('[MAISG] Direct DOM set failed:', e);
+  }
+
+  // Approach 3: Clipboard paste as last resort
+  try {
+    await navigator.clipboard.writeText(text);
+    document.execCommand('paste');
+    await sleep(200);
+    const val = inputEl.textContent || '';
+    if (val.trim().length > 0) {
+      console.log('[MAISG] Clipboard paste succeeded');
+      return true;
+    }
+  } catch (e) {
+    console.warn('[MAISG] Clipboard paste failed:', e);
   }
 
   return false;
@@ -104,14 +92,21 @@ function findAndClickSubmit(inputEl: HTMLElement): boolean {
     container = container?.parentElement || null;
     if (!container) break;
 
-    // Look for buttons with SVG icons (Meta AI's send button is usually a circular icon button)
+    // Look for buttons
     const buttons = Array.from(container.querySelectorAll('button')) as HTMLButtonElement[];
     for (const btn of buttons) {
       if (btn.disabled || btn.offsetWidth === 0) continue;
 
       const ariaLabel = (btn.getAttribute('aria-label') || '').toLowerCase();
       const title = (btn.getAttribute('title') || '').toLowerCase();
+      const className = (btn.className || '').toLowerCase();
       const textContent = (btn.textContent || '').toLowerCase().trim();
+
+      // Skip attachment/media buttons
+      const isExclude = ['attach', 'upload', 'file', 'image', 'media', 'voice', 'audio', 'mic', 'document', 'photo', 'camera', 'plus', 'add'].some(
+        term => ariaLabel.includes(term) || title.includes(term) || className.includes(term)
+      );
+      if (isExclude) continue;
 
       // Match send/submit buttons
       if (
@@ -129,12 +124,20 @@ function findAndClickSubmit(inputEl: HTMLElement): boolean {
     }
   }
 
-  // Broad fallback: any visible button with SVG near bottom of page
+  // Broad fallback
   const allButtons = Array.from(document.querySelectorAll('button')) as HTMLButtonElement[];
   for (const btn of allButtons) {
     if (btn.disabled || btn.offsetWidth === 0) continue;
     const ariaLabel = (btn.getAttribute('aria-label') || '').toLowerCase();
-    if (ariaLabel.includes('send') || ariaLabel.includes('submit')) {
+    const title = (btn.getAttribute('title') || '').toLowerCase();
+    const className = (btn.className || '').toLowerCase();
+    
+    const isExclude = ['attach', 'upload', 'file', 'image', 'media', 'voice', 'audio', 'mic', 'document', 'photo', 'camera', 'plus', 'add'].some(
+      term => ariaLabel.includes(term) || title.includes(term) || className.includes(term)
+    );
+    if (isExclude) continue;
+
+    if (ariaLabel.includes('send') || ariaLabel.includes('submit') || title.includes('send')) {
       console.log('[MAISG] Fallback send button found:', ariaLabel);
       btn.click();
       return true;

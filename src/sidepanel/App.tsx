@@ -495,6 +495,12 @@ export const App: React.FC = () => {
               onAnalyze={handleAnalyzeScript}
               isAnalyzing={isAnalyzing}
               onClear={handleClearScript}
+              imageStyle={settings.imageStyle || 'Cinematic'}
+              onStyleChange={(style) => setSettings((prev) => ({ ...prev, imageStyle: style }))}
+              imageFrame={settings.imageFrame || 'Landscape (16:9)'}
+              onFrameChange={(frame) => setSettings((prev) => ({ ...prev, imageFrame: frame }))}
+              sceneCount={settings.sceneCount || 5}
+              onSceneCountChange={(count) => setSettings((prev) => ({ ...prev, sceneCount: count }))}
             />
 
             <GenerationProgress
