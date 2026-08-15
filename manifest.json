@@ -1,0 +1,47 @@
+{
+  "manifest_version": 3,
+  "name": "Meta AI Scene Generator & Auto-Prompter",
+  "version": "1.0.0",
+  "description": "Splits video scripts into visual scenes and automatically generates images on Meta AI.",
+  "permissions": [
+    "sidePanel",
+    "storage",
+    "activeTab",
+    "scripting",
+    "downloads"
+  ],
+  "host_permissions": [
+    "https://www.meta.ai/*",
+    "https://meta.ai/*",
+    "https://generativelanguage.googleapis.com/*",
+    "https://api.openai.com/*",
+    "https://api.anthropic.com/*",
+    "https://api.groq.com/*",
+    "https://openrouter.ai/*",
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "dist/background.js"
+  },
+  "side_panel": {
+    "default_path": "dist/sidepanel.html"
+  },
+  "action": {
+    "default_title": "Open Meta AI Scene Generator"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.meta.ai/*",
+        "https://meta.ai/*"
+      ],
+      "js": ["dist/content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "public/icons/icon16.png",
+    "48": "public/icons/icon48.png",
+    "128": "public/icons/icon128.png"
+  }
+}
