@@ -29,11 +29,11 @@ export const FileSaverService = {
     scenes: Scene[],
     pattern: 'number_only' | 'scene_num' | 'padded_num' = 'number_only',
     folderName: string = ''
-  ): Promise<{ success: boolean; count: number; error?: string }> {
+  ): Promise<{ success: boolean; count: number; failedIds: string[]; error?: string }> {
     const selectedScenes = scenes.filter((s) => s.selected && s.imageUrl);
 
     if (selectedScenes.length === 0) {
-      return { success: false, count: 0, error: 'No scenes selected or no images available to download.' };
+      return { success: false, count: 0, failedIds: [], error: 'No scenes selected or no images available to download.' };
     }
 
     const cleanFolder = folderName.trim().replace(/[\\/:*?"<>|]/g, '');
@@ -53,6 +53,7 @@ export const FileSaverService = {
     }
 
     // Web fallback using showDirectoryPicker or anchor click
+    const failedIds: string[] = [];
     try {
       if ('showDirectoryPicker' in window) {
         let dirHandle = savedDirectoryHandle;
@@ -70,7 +71,10 @@ export const FileSaverService = {
         let savedCount = 0;
         for (let i = 0; i < selectedScenes.length; i++) {
           const scene = selectedScenes[i];
-          if (!scene.imageUrl) continue;
+          if (!scene.imageUrl) {
+            failedIds.push(scene.id);
+            continue;
+          }
 
           const num = i + 1;
           const paddedNum = String(num).padStart(2, '0');
@@ -87,9 +91,10 @@ export const FileSaverService = {
             savedCount++;
           } catch (err) {
             console.error(`Failed to save ${baseName}:`, err);
+            failedIds.push(scene.id);
           }
         }
-        return { success: true, count: savedCount };
+        return { success: savedCount > 0, count: savedCount, failedIds };
       }
     } catch (err: any) {
       console.warn('Directory handle write failed, falling back to chrome download:', err);
@@ -101,11 +106,15 @@ export const FileSaverService = {
   async chromeDownload(
     selectedScenes: Scene[],
     getFileName: (index: number) => string
-  ): Promise<{ success: boolean; count: number; error?: string }> {
+  ): Promise<{ success: boolean; count: number; failedIds: string[]; error?: string }> {
     let count = 0;
+    const failedIds: string[] = [];
     for (let i = 0; i < selectedScenes.length; i++) {
       const scene = selectedScenes[i];
-      if (!scene.imageUrl) continue;
+      if (!scene.imageUrl) {
+        failedIds.push(scene.id);
+        continue;
+      }
 
       const fileName = getFileName(i);
 
@@ -130,7 +139,7 @@ export const FileSaverService = {
         }
 
         if (typeof chrome !== 'undefined' && chrome.downloads) {
-          await new Promise<void>((resolve) => {
+          const downloadSuccess = await new Promise<boolean>((resolve) => {
             chrome.downloads.download(
               {
                 url: downloadUrl,
@@ -140,15 +149,21 @@ export const FileSaverService = {
               },
               (downloadId) => {
                 const err = chrome.runtime.lastError;
-                if (err) {
-                  console.error(`[FileSaver] chrome.downloads error for ${fileName}:`, err.message);
+                if (err || !downloadId) {
+                  console.error(`[FileSaver] chrome.downloads error for ${fileName}:`, err?.message || 'No download ID');
+                  resolve(false);
                 } else {
-                  count++;
+                  resolve(true);
                 }
-                resolve();
               }
             );
           });
+
+          if (downloadSuccess) {
+            count++;
+          } else {
+            failedIds.push(scene.id);
+          }
           // Small delay between downloads to avoid overwhelming the browser
           await new Promise(r => setTimeout(r, 300));
         } else {
@@ -164,10 +179,11 @@ export const FileSaverService = {
         }
       } catch (e) {
         console.error(`Download failed for ${fileName}`, e);
+        failedIds.push(scene.id);
       }
     }
 
-    return { success: count > 0, count };
+    return { success: count > 0, count, failedIds };
   },
 
   // Fetch image via background script (bypasses CORS for CDN URLs like scontent.fbcdn.net)

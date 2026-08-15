@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Download, CheckSquare, Square, RefreshCw, FolderDown, Image as ImageIcon, ExternalLink } from 'lucide-react';
+import { Download, CheckSquare, Square, RefreshCw, FolderDown, Image as ImageIcon, ExternalLink, AlertCircle } from 'lucide-react';
 import { Scene } from '../types';
 
 interface ImageGalleryProps {
@@ -11,6 +11,8 @@ interface ImageGalleryProps {
   onRegenerateScene: (scene: Scene) => void;
   isGenerating: boolean;
   isDownloading: boolean;
+  failedDownloadIds?: string[];
+  onRetryFailed?: () => void;
 }
 
 export const ImageGallery: React.FC<ImageGalleryProps> = ({
@@ -21,7 +23,9 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
   onDownloadSelected,
   onRegenerateScene,
   isGenerating,
-  isDownloading
+  isDownloading,
+  failedDownloadIds = [],
+  onRetryFailed
 }) => {
   const [selectedPreviewImg, setSelectedPreviewImg] = useState<string | null>(null);
   const generatedScenes = scenes.filter((s) => s.imageUrl);
@@ -147,6 +151,51 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
           );
         })}
       </div>
+
+      {/* Failed Downloads retry block */}
+      {failedDownloadIds.length > 0 && (
+        <div className="p-3 bg-red-950/40 border border-red-500/30 rounded-xl space-y-2.5 mt-2 animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4.5 h-4.5 text-red-400 shrink-0" />
+            <span className="text-xs font-bold text-red-200">
+              {failedDownloadIds.length} Image(s) Failed to Download
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto pr-1">
+            {failedDownloadIds.map((id) => {
+              const scene = scenes.find((s) => s.id === id);
+              if (!scene || !scene.imageUrl) return null;
+              return (
+                <div key={id} className="relative w-8 h-8 rounded border border-red-500/20 overflow-hidden bg-slate-900 group">
+                  <img src={scene.imageUrl} className="w-full h-full object-cover opacity-80" />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/60 text-[9px] text-red-300 font-extrabold font-mono">
+                    #{scene.sceneNumber}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {onRetryFailed && (
+            <button
+              onClick={onRetryFailed}
+              disabled={isDownloading}
+              className="w-full flex items-center justify-center gap-1.5 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-lg transition shadow-md shadow-red-900/30"
+            >
+              {isDownloading ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Retrying...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  Retry Downloading Failed Images ({failedDownloadIds.length})
+                </>
+              )}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Full Resolution Modal Preview */}
       {selectedPreviewImg && (

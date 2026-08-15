@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { RefreshCw, FolderDown, CheckCircle2, Hash, Layers, ListFilter } from 'lucide-react';
+import { RefreshCw, FolderDown, CheckCircle2, Hash, Layers, ListFilter, AlertCircle } from 'lucide-react';
 import { FileSaverService } from '../services/fileSaver';
 
 interface PageImage {
@@ -30,6 +30,7 @@ export const QuickDownloader: React.FC<QuickDownloaderProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [statusMsg, setStatusMsg] = useState<string | undefined>();
   const [folderName, setFolderName] = useState<string>('');
+  const [failedImageIds, setFailedImageIds] = useState<string[]>([]);
 
   // Range selection state
   const [rangeFrom, setRangeFrom] = useState<string>('');
@@ -115,6 +116,7 @@ export const QuickDownloader: React.FC<QuickDownloaderProps> = ({
     if (selectedOrder.length === 0) return;
     setIsSaving(true);
     setStatusMsg(undefined);
+    setFailedImageIds([]);
 
     try {
       // Sort selected images by their pageIndex so save order is always sequential
@@ -135,12 +137,65 @@ export const QuickDownloader: React.FC<QuickDownloaderProps> = ({
       const res = await FileSaverService.saveImagesToDirectory(orderedScenes, fileNamePattern, folderName);
       if (res.success) {
         const targetPath = folderName.trim() ? `Downloads/${folderName.trim()}/` : 'Downloads/';
-        setStatusMsg(`✅ Saved ${res.count} images to "${targetPath}"`);
-      } else if (res.error) {
-        setStatusMsg(res.error);
+        if (res.failedIds && res.failedIds.length > 0) {
+          setFailedImageIds(res.failedIds);
+          setStatusMsg(`⚠️ Saved ${res.count} images, but ${res.failedIds.length} failed to download. See below to retry.`);
+        } else {
+          setStatusMsg(`✅ Saved ${res.count} images to "${targetPath}"`);
+        }
+      } else {
+        setStatusMsg(res.error || 'Download failed.');
+        if (res.failedIds && res.failedIds.length > 0) {
+          setFailedImageIds(res.failedIds);
+        }
       }
     } catch (e: any) {
       setStatusMsg('Download failed: ' + (e.message || String(e)));
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Retry downloading ONLY failed images
+  const handleRetryFailedDownloads = async () => {
+    if (failedImageIds.length === 0) return;
+    setIsSaving(true);
+    setStatusMsg(undefined);
+
+    const retryIds = [...failedImageIds];
+    try {
+      const orderedScenes = retryIds
+        .map((id) => images.find((img) => img.id === id))
+        .filter(Boolean)
+        .sort((a, b) => a!.pageIndex - b!.pageIndex)
+        .map((img, index) => ({
+          id: img!.id,
+          sceneNumber: index + 1,
+          scriptExcerpt: `Image ${img!.pageIndex}`,
+          prompt: `Image ${img!.pageIndex}`,
+          imageUrl: img!.src,
+          status: 'completed' as const,
+          selected: true
+        }));
+
+      const res = await FileSaverService.saveImagesToDirectory(orderedScenes, fileNamePattern, folderName);
+      if (res.success) {
+        const targetPath = folderName.trim() ? `Downloads/${folderName.trim()}/` : 'Downloads/';
+        const newFailedIds = res.failedIds || [];
+        setFailedImageIds(newFailedIds);
+        if (newFailedIds.length > 0) {
+          setStatusMsg(`⚠️ Saved ${res.count} retried images, but ${newFailedIds.length} failed again.`);
+        } else {
+          setStatusMsg(`✅ All failed images successfully saved to "${targetPath}"!`);
+        }
+      } else {
+        setStatusMsg(res.error || 'Retry failed.');
+        if (res.failedIds && res.failedIds.length > 0) {
+          setFailedImageIds(res.failedIds);
+        }
+      }
+    } catch (e: any) {
+      setStatusMsg('Retry failed: ' + (e.message || String(e)));
     } finally {
       setIsSaving(false);
     }
@@ -299,6 +354,49 @@ export const QuickDownloader: React.FC<QuickDownloaderProps> = ({
               );
             })}
           </div>
+
+          {/* Failed Downloads Section */}
+          {failedImageIds.length > 0 && (
+            <div className="p-3 bg-red-950/40 border border-red-500/30 rounded-xl space-y-2.5 animate-fadeIn">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="w-4.5 h-4.5 text-red-400 shrink-0" />
+                <span className="text-xs font-bold text-red-200">
+                  {failedImageIds.length} Image(s) Failed to Download
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5 max-h-[80px] overflow-y-auto pr-1">
+                {failedImageIds.map((id) => {
+                  const img = images.find((i) => i.id === id);
+                  if (!img) return null;
+                  return (
+                    <div key={id} className="relative w-8 h-8 rounded border border-red-500/20 overflow-hidden bg-slate-900 group">
+                      <img src={img.src} className="w-full h-full object-cover opacity-80" />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/60 text-[9px] text-red-300 font-extrabold font-mono">
+                        #{img.pageIndex}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <button
+                onClick={handleRetryFailedDownloads}
+                disabled={isSaving}
+                className="w-full flex items-center justify-center gap-1.5 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-lg transition shadow-md shadow-red-900/30"
+              >
+                {isSaving ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Retrying...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    Retry Downloading Failed Images ({failedImageIds.length})
+                  </>
+                )}
+              </button>
+            </div>
+          )}
 
           {/* Download Button */}
           <button

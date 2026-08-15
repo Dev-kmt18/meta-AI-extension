@@ -28,6 +28,7 @@ export const App: React.FC = () => {
   const [isMetaConnected, setIsMetaConnected] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | undefined>();
   const [activeMetaTabId, setActiveMetaTabId] = useState<number | undefined>();
+  const [failedDownloadIds, setFailedDownloadIds] = useState<string[]>([]);
 
   // Refs for async loop access to latest state
   const pauseRef = useRef(false);
@@ -418,14 +419,41 @@ export const App: React.FC = () => {
 
   const handleDownloadSelected = async () => {
     setIsDownloading(true);
+    setErrorMsg(undefined);
+    setFailedDownloadIds([]);
     try {
       const pattern = settings.fileNamePattern || 'number_only';
       const res = await FileSaverService.saveImagesToDirectory(scenes, pattern);
-      if (!res.success && res.error) {
+      if (res.failedIds && res.failedIds.length > 0) {
+        setFailedDownloadIds(res.failedIds);
+        setErrorMsg(`⚠️ Saved ${res.count} images, but ${res.failedIds.length} failed. Scroll down to retry.`);
+      } else if (!res.success && res.error) {
         setErrorMsg(res.error);
       }
     } catch (err: any) {
       setErrorMsg('Failed to download images.');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const handleRetryFailedDownloads = async () => {
+    if (failedDownloadIds.length === 0) return;
+    setIsDownloading(true);
+    setErrorMsg(undefined);
+    try {
+      const pattern = settings.fileNamePattern || 'number_only';
+      const failedScenes = scenes.filter(s => failedDownloadIds.includes(s.id));
+      const res = await FileSaverService.saveImagesToDirectory(failedScenes, pattern);
+      const newFailed = res.failedIds || [];
+      setFailedDownloadIds(newFailed);
+      if (newFailed.length > 0) {
+        setErrorMsg(`⚠️ Retried: Saved ${res.count} images, but ${newFailed.length} failed again.`);
+      } else {
+        setErrorMsg(undefined);
+      }
+    } catch (err: any) {
+      setErrorMsg('Failed to retry download.');
     } finally {
       setIsDownloading(false);
     }
@@ -498,6 +526,8 @@ export const App: React.FC = () => {
               onRegenerateScene={handleRegenerateScene}
               isGenerating={generationState === 'generating'}
               isDownloading={isDownloading}
+              failedDownloadIds={failedDownloadIds}
+              onRetryFailed={handleRetryFailedDownloads}
             />
           </>
         )}
