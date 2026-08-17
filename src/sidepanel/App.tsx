@@ -349,9 +349,13 @@ export const App: React.FC = () => {
   const handleStart = () => startOrResumeGeneration(0);
   const handlePause = () => { pauseRef.current = true; setGenerationState('paused'); };
   const handleResume = () => {
-    // Find first non-completed scene
-    const nextIdx = scenesRef.current.findIndex((s, i) => i >= currentIndex && s.status !== 'completed');
-    startOrResumeGeneration(nextIdx >= 0 ? nextIdx : currentIndex);
+    // Find first pending scene starting from currentIndex, fallback to first non-completed
+    let nextIdx = scenesRef.current.findIndex((s, i) => i >= currentIndex && s.status === 'pending');
+    if (nextIdx < 0) {
+      nextIdx = scenesRef.current.findIndex((s, i) => i >= currentIndex && s.status !== 'completed');
+    }
+    const targetIdx = nextIdx >= 0 ? nextIdx : currentIndex;
+    startOrResumeGeneration(targetIdx);
   };
 
   const handleReset = () => {

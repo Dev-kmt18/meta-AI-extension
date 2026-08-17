@@ -60,8 +60,9 @@ export const LlmService = {
 
     const systemPrompt = `You are an expert film director and AI image prompt engineer.
 Analyze the video script and split it into distinct visual scenes.${styleInstructions}
-For each scene, output a highly detailed, descriptive, rich, and creative English image prompt suitable for AI generation (like Meta AI).
-The prompt should be very descriptive, detailing the character expressions, setting, actions, lighting, camera angle, and mood. Avoid simple short prompts. Do not make prompts short or generic!
+CRITICAL REQUIREMENT: All generated image prompts MUST be written in clear, descriptive ENGLISH. If the video script is in Hindi or any non-English language, translate the visual descriptions into rich English prompts so Meta AI can generate them without error! Do NOT include Hindi text in the "prompt" field!
+For each scene, output a highly detailed, descriptive, rich, and creative English image prompt suitable for AI image generation (like Meta AI).
+The prompt should be very descriptive, detailing the character expressions, setting, actions, lighting, camera angle, and mood. Avoid simple short prompts.
 Output MUST be a valid JSON array of objects, with keys: "sceneNumber", "scriptExcerpt", and "prompt". Do NOT include markdown text formatting or codeblock ticks around the JSON.`;
 
     const userPrompt = `Script:\n${scriptText}`;
@@ -320,11 +321,17 @@ Output MUST be a valid JSON array of objects, with keys: "sceneNumber", "scriptE
     for (let i = 0; i < chunkCount; i++) {
       const chunkSentences = lines.slice(i * scenesPerChunk, (i + 1) * scenesPerChunk);
       const excerpt = chunkSentences.join('. ');
+      const hasNonAscii = /[^\x00-\x7F]/.test(excerpt);
+      
+      const promptText = hasNonAscii
+        ? `Detailed artistic ${style} illustration of scene ${i + 1}: a powerful narrative moment depicting choice, destiny, and consequences. Dramatic lighting, high resolution, ${style} visual style, aspect ratio ${frame}`
+        : `Cinematic photo, 8k, highly detailed visual scene showing: ${excerpt}. Visual style: ${style}, aspect ratio: ${frame}`;
+
       result.push({
         id: `scene-${Date.now()}-${i}`,
         sceneNumber: i + 1,
         scriptExcerpt: excerpt.slice(0, 150) + (excerpt.length > 150 ? '...' : ''),
-        prompt: `Cinematic photo, 8k, highly detailed visual scene showing: ${excerpt}. Visual style is ${style}, aspect ratio is ${frame}`,
+        prompt: promptText,
         status: 'pending',
         selected: true
       });
@@ -337,7 +344,7 @@ Output MUST be a valid JSON array of objects, with keys: "sceneNumber", "scriptE
         id: `scene-${Date.now()}-${idx}`,
         sceneNumber: idx + 1,
         scriptExcerpt: `Additional scene detail for script`,
-        prompt: `Cinematic photo, 8k, highly detailed visual scene showing additional narrative details in ${style} style, aspect ratio ${frame}`,
+        prompt: `Detailed artistic ${style} illustration of scene ${idx + 1}: narrative storytelling illustration with expressive character composition, ${style} visual style, aspect ratio ${frame}`,
         status: 'pending',
         selected: true
       });
