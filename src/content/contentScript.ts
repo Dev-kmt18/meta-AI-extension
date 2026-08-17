@@ -27,6 +27,12 @@ async function typeIntoInput(inputEl: HTMLElement, text: string): Promise<boolea
 
   // Clear existing text first
   try {
+    inputEl.focus();
+    if (inputEl.isContentEditable) {
+      inputEl.innerHTML = '';
+    } else if (inputEl instanceof HTMLTextAreaElement) {
+      inputEl.value = '';
+    }
     document.execCommand('selectAll', false, undefined);
     document.execCommand('delete', false, undefined);
     await sleep(50);
@@ -153,76 +159,72 @@ function findAndClickSubmit(inputEl: HTMLElement): boolean {
   return true;
 }
 
-// ─── Count all images currently on the page ───
-function countImages(): number {
-  return document.querySelectorAll('img').length;
+// ─── Get existing large image URLs currently on the page ───
+function getExistingLargeImageUrls(): Set<string> {
+  const urls = new Set<string>();
+  const imgEls = Array.from(document.querySelectorAll('img'));
+  for (const img of imgEls) {
+    if (img.width >= 150 && img.height >= 150 && img.src && !img.src.includes('emoji') && !img.src.includes('avatar')) {
+      urls.add(img.src);
+    }
+  }
+  return urls;
 }
 
-// ─── Find the newest large image on the page ───
-function findNewestLargeImage(): string | null {
+// ─── Find the newly generated image on the page ───
+function findNewGeneratedImage(existingUrls: Set<string>): string | null {
   const allImages = Array.from(document.querySelectorAll('img')).reverse();
   for (const img of allImages) {
     if (img.width >= 150 && img.height >= 150 && img.src && !img.src.includes('emoji') && !img.src.includes('avatar')) {
-      return img.src;
+      if (!existingUrls.has(img.src)) {
+        return img.src;
+      }
     }
   }
-  // Also check for any new large images by src pattern
+  // Check for any new large images by source format as fallback
   for (const img of allImages) {
     const src = img.src || '';
     if (
-      src.includes('scontent') ||
-      src.includes('fbcdn') ||
-      src.startsWith('blob:') ||
-      src.startsWith('data:image')
+      (src.includes('scontent') || src.includes('fbcdn') || src.startsWith('blob:') || src.startsWith('data:image')) &&
+      img.width >= 150 && img.height >= 150
     ) {
-      return src;
+      if (!existingUrls.has(src)) {
+        return src;
+      }
     }
   }
   return null;
 }
 
 // ─── Wait for a new image to appear (MutationObserver + polling) ───
-async function waitForNewImage(initialImgCount: number, timeoutMs = 90000): Promise<string> {
+async function waitForNewImage(existingUrls: Set<string>, timeoutMs = 90000): Promise<string> {
   return new Promise((resolve, reject) => {
     const start = Date.now();
-    console.log('[MAISG] Watching for new image generation... (initial count:', initialImgCount, ')');
+    console.log('[MAISG] Watching for new image generation... (existing count:', existingUrls.size, ')');
 
     const poll = setInterval(() => {
-      const currentCount = countImages();
-      if (currentCount > initialImgCount) {
-        const url = findNewestLargeImage();
-        if (url) {
-          clearInterval(poll);
-          obs.disconnect();
-          console.log('[MAISG] New image detected via polling:', url);
-          resolve(url);
-          return;
-        }
+      const newImgUrl = findNewGeneratedImage(existingUrls);
+      if (newImgUrl) {
+        clearInterval(poll);
+        obs.disconnect();
+        console.log('[MAISG] New image detected via polling:', newImgUrl);
+        resolve(newImgUrl);
+        return;
       }
       if (Date.now() - start > timeoutMs) {
         clearInterval(poll);
         obs.disconnect();
-        // Try one last time
-        const fallback = findNewestLargeImage();
-        if (fallback) {
-          console.log('[MAISG] Timeout but found a fallback image:', fallback);
-          resolve(fallback);
-        } else {
-          reject(new Error('Timed out waiting for image generation (90s).'));
-        }
+        reject(new Error('Timed out waiting for image generation (90s).'));
       }
     }, 2000);
 
     const obs = new MutationObserver(() => {
-      const currentCount = countImages();
-      if (currentCount > initialImgCount) {
-        const url = findNewestLargeImage();
-        if (url) {
-          clearInterval(poll);
-          obs.disconnect();
-          console.log('[MAISG] New image detected via MutationObserver:', url);
-          resolve(url);
-        }
+      const newImgUrl = findNewGeneratedImage(existingUrls);
+      if (newImgUrl) {
+        clearInterval(poll);
+        obs.disconnect();
+        console.log('[MAISG] New image detected via MutationObserver:', newImgUrl);
+        resolve(newImgUrl);
       }
     });
 
@@ -311,8 +313,8 @@ chrome.runtime.onMessage.addListener((message: ChromeMessage, _sender: chrome.ru
           throw new Error('Meta AI chat input not found. Make sure you are on meta.ai with the chat open.');
         }
 
-        // Step 2: Record current image count
-        const initialImgCount = countImages();
+        // Step 2: Record existing image URLs to avoid matching old images
+        const existingUrls = getExistingLargeImageUrls();
 
         // Step 3: Type the prompt text
         const typed = await typeIntoInput(inputEl, prompt);
@@ -322,11 +324,14 @@ chrome.runtime.onMessage.addListener((message: ChromeMessage, _sender: chrome.ru
         await sleep(600);
 
         // Step 4: Submit the prompt
-        findAndClickSubmit(inputEl);
+        const clicked = findAndClickSubmit(inputEl);
+        if (!clicked) {
+          console.warn('[MAISG] Send button click simulation did not match a standard button.');
+        }
         await sleep(1500);
 
         // Step 5: Wait for image generation
-        const imageUrl = await waitForNewImage(initialImgCount, 90000);
+        const imageUrl = await waitForNewImage(existingUrls, 90000);
         console.log('[MAISG] === SUCCESS === Image URL:', imageUrl);
 
         sendResponse({ success: true, imageUrl });

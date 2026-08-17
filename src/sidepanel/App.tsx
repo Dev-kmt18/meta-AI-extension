@@ -328,6 +328,9 @@ export const App: React.FC = () => {
           return updated;
         });
         setErrorMsg(`Scene ${idx + 1} failed: ${err.message}`);
+        setGenerationState('paused');
+        pauseRef.current = true;
+        return; // Stop the loop on error
       }
 
       // Delay between scenes (give Meta AI time to settle)
