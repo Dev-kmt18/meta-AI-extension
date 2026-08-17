@@ -174,7 +174,7 @@ export const App: React.FC = () => {
   };
 
   // ─── Send a single prompt with auto-retry and re-injection ───
-  const sendPromptWithRetry = useCallback(async (prompt: string, maxRetries = 5): Promise<string> => {
+  const sendPromptWithRetry = useCallback(async (prompt: string, maxRetries = 2): Promise<string> => {
     let lastError = '';
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -242,16 +242,20 @@ export const App: React.FC = () => {
         lastError = err.message;
         console.warn(`[SidePanel] Attempt ${attempt} failed:`, err.message);
 
+        // Do not retry typing into Meta AI if Meta AI stopped the request
+        if (err.message.includes('Request was stopped') || err.message.includes('unable to generate')) {
+          throw err;
+        }
+
         if (attempt < maxRetries) {
-          // Wait longer between retries (gives Meta AI time to settle)
-          const waitTime = attempt === 1 ? 3000 : 5000;
+          const waitTime = 3000;
           console.log(`[SidePanel] Retrying in ${waitTime}ms...`);
           await new Promise(r => setTimeout(r, waitTime));
         }
       }
     }
 
-    throw new Error(`Failed after ${maxRetries} attempts: ${lastError}`);
+    throw new Error(lastError || `Failed to generate image.`);
   }, [findMetaAITab, ensureContentScript, injectContentScript]);
 
   // ─── Sequential Generation Loop ───

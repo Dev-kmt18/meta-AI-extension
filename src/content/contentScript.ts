@@ -20,31 +20,42 @@ function getChatInput(): HTMLElement | null {
   return null;
 }
 
-// ─── Type text into the chat input using execCommand insertText or events ───
-async function typeIntoInput(inputEl: HTMLElement, text: string): Promise<boolean> {
+// ─── Force clear the Lexical editor / input box completely ───
+function clearInputBox(inputEl: HTMLElement) {
   inputEl.focus();
-  await sleep(100);
-
-  // Clear existing text first
   try {
-    inputEl.focus();
-    if (inputEl.isContentEditable) {
-      inputEl.innerHTML = '';
-    } else if (inputEl instanceof HTMLTextAreaElement) {
-      inputEl.value = '';
+    const sel = window.getSelection();
+    if (sel) {
+      const range = document.createRange();
+      range.selectNodeContents(inputEl);
+      sel.removeAllRanges();
+      sel.addRange(range);
     }
+  } catch (e) { /* ignore */ }
+
+  if (inputEl.isContentEditable) {
+    inputEl.innerHTML = '<p><br></p>';
+  } else if (inputEl instanceof HTMLTextAreaElement) {
+    inputEl.value = '';
+  }
+
+  try {
     document.execCommand('selectAll', false, undefined);
     document.execCommand('delete', false, undefined);
-    await sleep(50);
-  } catch (e) {
-    console.warn('[MAISG] Clear failed:', e);
-  }
+  } catch (e) { /* ignore */ }
+}
+
+// ─── Type text into the chat input using execCommand insertText or events ───
+async function typeIntoInput(inputEl: HTMLElement, text: string): Promise<boolean> {
+  // Clear any existing text first to avoid appending to unsent prompts
+  clearInputBox(inputEl);
+  await sleep(100);
 
   // Approach 1: execCommand insertText (most reliable & synchronous for rich contenteditable)
   try {
     const success = document.execCommand('insertText', false, text);
-    const val = inputEl.textContent || '';
-    if (success && val.trim().length > 0) {
+    const val = (inputEl.textContent || '').trim();
+    if (success && val.length > 0) {
       console.log('[MAISG] execCommand insertText succeeded');
       return true;
     }
@@ -64,8 +75,8 @@ async function typeIntoInput(inputEl: HTMLElement, text: string): Promise<boolea
     inputEl.dispatchEvent(new InputEvent('input', { inputType: 'insertText', data: text, bubbles: true, composed: true }));
     inputEl.dispatchEvent(new Event('change', { bubbles: true }));
     
-    const val = inputEl.textContent || '';
-    if (val.trim().length > 0) {
+    const val = (inputEl.textContent || '').trim();
+    if (val.length > 0) {
       console.log('[MAISG] Direct DOM set + events succeeded');
       return true;
     }
@@ -78,8 +89,8 @@ async function typeIntoInput(inputEl: HTMLElement, text: string): Promise<boolea
     await navigator.clipboard.writeText(text);
     document.execCommand('paste');
     await sleep(200);
-    const val = inputEl.textContent || '';
-    if (val.trim().length > 0) {
+    const val = (inputEl.textContent || '').trim();
+    if (val.length > 0) {
       console.log('[MAISG] Clipboard paste succeeded');
       return true;
     }
@@ -92,13 +103,20 @@ async function typeIntoInput(inputEl: HTMLElement, text: string): Promise<boolea
 
 // ─── Find and click the send/submit button ───
 function findAndClickSubmit(inputEl: HTMLElement): boolean {
+  // Dispatch Enter key event first
+  try {
+    const opts = { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true };
+    inputEl.dispatchEvent(new KeyboardEvent('keydown', opts));
+    inputEl.dispatchEvent(new KeyboardEvent('keypress', opts));
+    inputEl.dispatchEvent(new KeyboardEvent('keyup', opts));
+  } catch (e) { /* ignore */ }
+
   // Walk up from the input to find the closest send button
   let container: HTMLElement | null = inputEl;
   for (let i = 0; i < 10; i++) {
     container = container?.parentElement || null;
     if (!container) break;
 
-    // Look for buttons
     const buttons = Array.from(container.querySelectorAll('button')) as HTMLButtonElement[];
     for (const btn of buttons) {
       if (btn.disabled || btn.offsetWidth === 0) continue;
@@ -106,7 +124,6 @@ function findAndClickSubmit(inputEl: HTMLElement): boolean {
       const ariaLabel = (btn.getAttribute('aria-label') || '').toLowerCase();
       const title = (btn.getAttribute('title') || '').toLowerCase();
       const className = (btn.className || '').toLowerCase();
-      const textContent = (btn.textContent || '').toLowerCase().trim();
 
       // Skip attachment/media buttons
       const isExclude = ['attach', 'upload', 'file', 'image', 'media', 'voice', 'audio', 'mic', 'document', 'photo', 'camera', 'plus', 'add'].some(
@@ -114,16 +131,19 @@ function findAndClickSubmit(inputEl: HTMLElement): boolean {
       );
       if (isExclude) continue;
 
-      // Match send/submit buttons
+      // Match send/submit buttons (Meta AI's send button is blue circular button with upward arrow)
+      const style = window.getComputedStyle(btn);
+      const isBlueBtn = style.backgroundColor.includes('rgb(0,') || style.backgroundColor.includes('rgb(24,') || style.backgroundColor.includes('rgb(10,') || style.backgroundColor.includes('rgb(59,');
+
       if (
         ariaLabel.includes('send') ||
         ariaLabel.includes('submit') ||
         title.includes('send') ||
         title.includes('submit') ||
-        // Meta AI send button has no text, just an SVG icon - look for small icon buttons near the input
-        (btn.querySelector('svg') && btn.offsetWidth < 60 && textContent === '')
+        isBlueBtn ||
+        (btn.querySelector('svg') && btn.offsetWidth < 60)
       ) {
-        console.log('[MAISG] Found send button:', btn.ariaLabel || btn.className);
+        console.log('[MAISG] Found send button, clicking:', ariaLabel || className);
         btn.click();
         return true;
       }
@@ -150,12 +170,6 @@ function findAndClickSubmit(inputEl: HTMLElement): boolean {
     }
   }
 
-  // Last resort: Enter key
-  console.log('[MAISG] Dispatching Enter key as last resort submit');
-  const opts = { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true };
-  inputEl.dispatchEvent(new KeyboardEvent('keydown', opts));
-  inputEl.dispatchEvent(new KeyboardEvent('keypress', opts));
-  inputEl.dispatchEvent(new KeyboardEvent('keyup', opts));
   return true;
 }
 
@@ -196,6 +210,18 @@ function findNewGeneratedImage(existingUrls: Set<string>): string | null {
   return null;
 }
 
+// ─── Check for Meta AI error state (e.g. Request was stopped) ───
+function checkMetaAiErrorState(): string | null {
+  const bodyText = document.body.innerText || '';
+  if (bodyText.includes('Request was stopped')) {
+    return 'Meta AI stopped the request ("Request was stopped"). Please try changing the style or simplifying the prompt.';
+  }
+  if (bodyText.includes("Can't generate image") || bodyText.includes("Unable to generate image")) {
+    return "Meta AI was unable to generate an image for this prompt.";
+  }
+  return null;
+}
+
 // ─── Wait for a new image to appear (MutationObserver + polling) ───
 async function waitForNewImage(existingUrls: Set<string>, timeoutMs = 90000): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -203,6 +229,16 @@ async function waitForNewImage(existingUrls: Set<string>, timeoutMs = 90000): Pr
     console.log('[MAISG] Watching for new image generation... (existing count:', existingUrls.size, ')');
 
     const poll = setInterval(() => {
+      // Check for Meta AI error state (e.g. Request was stopped)
+      const errorMsg = checkMetaAiErrorState();
+      if (errorMsg) {
+        clearInterval(poll);
+        obs.disconnect();
+        console.warn('[MAISG] Meta AI error detected:', errorMsg);
+        reject(new Error(errorMsg));
+        return;
+      }
+
       const newImgUrl = findNewGeneratedImage(existingUrls);
       if (newImgUrl) {
         clearInterval(poll);
@@ -219,6 +255,15 @@ async function waitForNewImage(existingUrls: Set<string>, timeoutMs = 90000): Pr
     }, 2000);
 
     const obs = new MutationObserver(() => {
+      const errorMsg = checkMetaAiErrorState();
+      if (errorMsg) {
+        clearInterval(poll);
+        obs.disconnect();
+        console.warn('[MAISG] Meta AI error detected:', errorMsg);
+        reject(new Error(errorMsg));
+        return;
+      }
+
       const newImgUrl = findNewGeneratedImage(existingUrls);
       if (newImgUrl) {
         clearInterval(poll);
