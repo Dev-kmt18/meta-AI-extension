@@ -323,8 +323,18 @@ Output MUST be a valid JSON array of objects, with keys: "sceneNumber", "scriptE
       const excerpt = chunkSentences.join('. ');
       const hasNonAscii = /[^\x00-\x7F]/.test(excerpt);
       
+      // Distinct visual angles so non-English scripts don't produce identical prompts for every scene
+      const nonAsciiVisuals = [
+        'a dramatic cinematic moment at golden hour with volumetric light, deep shadows, and rich contrast',
+        'a moody atmospheric scene with dramatic rim lighting, haze, and cinematic depth of field',
+        'a high-energy narrative moment with dynamic composition, motion, and vivid cinematic colors',
+        'an emotional close-up with shallow depth of field, soft key light, and detailed textures',
+        'an epic wide shot with breathtaking scenery, dramatic clouds, and cinematic color grading',
+        'a tense, suspenseful scene with low-key lighting, silhouettes, and cinematic framing',
+      ];
+
       const promptText = hasNonAscii
-        ? `Detailed artistic ${style} illustration of scene ${i + 1}: a powerful narrative moment depicting choice, destiny, and consequences. Dramatic lighting, high resolution, ${style} visual style, aspect ratio ${frame}`
+        ? `Cinematic photo, 8k, highly detailed visual scene showing: ${nonAsciiVisuals[i % nonAsciiVisuals.length]}, symbolizing the narrative meaning of this story moment. Visual style: ${style}, aspect ratio: ${frame}`
         : `Cinematic photo, 8k, highly detailed visual scene showing: ${excerpt}. Visual style: ${style}, aspect ratio: ${frame}`;
 
       result.push({

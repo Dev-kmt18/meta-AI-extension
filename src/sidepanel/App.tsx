@@ -280,9 +280,9 @@ export const App: React.FC = () => {
       }
 
       setCurrentIndex(idx);
-      const scene = currentScenes[idx];
+      const scene = scenesRef.current[idx] || currentScenes[idx];
 
-      // Skip already completed scenes
+      // Skip already completed scenes (read live status so resumes never redo or skip wrong scenes)
       if (scene.status === 'completed' && scene.imageUrl) {
         console.log(`[SidePanel] Skipping already completed scene ${idx + 1}`);
         continue;
@@ -349,13 +349,20 @@ export const App: React.FC = () => {
   const handleStart = () => startOrResumeGeneration(0);
   const handlePause = () => { pauseRef.current = true; setGenerationState('paused'); };
   const handleResume = () => {
-    // Find first pending scene starting from currentIndex, fallback to first non-completed
-    let nextIdx = scenesRef.current.findIndex((s, i) => i >= currentIndex && s.status === 'pending');
+    // Continue from the first scene that still needs work at/after currentIndex.
+    // Falls back to any pending/failed scene earlier in the list. If everything is
+    // already completed, mark the run as completed instead of restarting from scene 1.
+    const scenesList = scenesRef.current;
+    const needsWork = (s: Scene) => s.status !== 'completed';
+    let nextIdx = scenesList.findIndex((s, i) => i >= currentIndex && needsWork(s));
     if (nextIdx < 0) {
-      nextIdx = scenesRef.current.findIndex((s, i) => i >= currentIndex && s.status !== 'completed');
+      nextIdx = scenesList.findIndex(needsWork);
     }
-    const targetIdx = nextIdx >= 0 ? nextIdx : currentIndex;
-    startOrResumeGeneration(targetIdx);
+    if (nextIdx < 0) {
+      setGenerationState('completed');
+      return;
+    }
+    startOrResumeGeneration(nextIdx);
   };
 
   const handleReset = () => {

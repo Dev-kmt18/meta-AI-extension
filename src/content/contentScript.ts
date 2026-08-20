@@ -45,25 +45,27 @@ function clearInputBox(inputEl: HTMLElement) {
   } catch (e) { /* ignore */ }
 }
 
-// ─── Type text into the chat input using execCommand insertText or events ───
+// ─── Type text into the chat input (Single-pass to prevent prompt duplication) ───
 async function typeIntoInput(inputEl: HTMLElement, text: string): Promise<boolean> {
-  // Clear any existing text first to avoid appending to unsent prompts
-  clearInputBox(inputEl);
-  await sleep(100);
+  inputEl.focus();
+  await sleep(50);
 
-  // Approach 1: execCommand insertText (most reliable & synchronous for rich contenteditable)
+  // Clear existing text completely
+  clearInputBox(inputEl);
+  await sleep(50);
+
+  // Approach 1: execCommand insertText (most reliable for contenteditable)
   try {
     const success = document.execCommand('insertText', false, text);
-    const val = (inputEl.textContent || '').trim();
-    if (success && val.length > 0) {
-      console.log('[MAISG] execCommand insertText succeeded');
+    if (success) {
+      console.log('[MAISG] execCommand insertText succeeded (typed once)');
       return true;
     }
   } catch (e) {
     console.warn('[MAISG] execCommand insertText failed:', e);
   }
 
-  // Approach 2: Direct DOM set + Dispatch Input Events (Lexical compatible fallback)
+  // Approach 2: Fallback DOM assignment ONLY if execCommand failed
   try {
     if (inputEl.isContentEditable) {
       inputEl.innerHTML = `<p>${text}</p>`;
@@ -74,28 +76,11 @@ async function typeIntoInput(inputEl: HTMLElement, text: string): Promise<boolea
     inputEl.dispatchEvent(new InputEvent('beforeinput', { inputType: 'insertText', data: text, bubbles: true, composed: true, cancelable: true }));
     inputEl.dispatchEvent(new InputEvent('input', { inputType: 'insertText', data: text, bubbles: true, composed: true }));
     inputEl.dispatchEvent(new Event('change', { bubbles: true }));
-    
-    const val = (inputEl.textContent || '').trim();
-    if (val.length > 0) {
-      console.log('[MAISG] Direct DOM set + events succeeded');
-      return true;
-    }
-  } catch (e) {
-    console.warn('[MAISG] Direct DOM set failed:', e);
-  }
 
-  // Approach 3: Clipboard paste as last resort
-  try {
-    await navigator.clipboard.writeText(text);
-    document.execCommand('paste');
-    await sleep(200);
-    const val = (inputEl.textContent || '').trim();
-    if (val.length > 0) {
-      console.log('[MAISG] Clipboard paste succeeded');
-      return true;
-    }
+    console.log('[MAISG] Fallback DOM insertion succeeded');
+    return true;
   } catch (e) {
-    console.warn('[MAISG] Clipboard paste failed:', e);
+    console.warn('[MAISG] Fallback DOM insertion failed:', e);
   }
 
   return false;
@@ -103,13 +88,9 @@ async function typeIntoInput(inputEl: HTMLElement, text: string): Promise<boolea
 
 // ─── Find and click the send/submit button ───
 function findAndClickSubmit(inputEl: HTMLElement): boolean {
-  // Dispatch Enter key event first
-  try {
-    const opts = { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true };
-    inputEl.dispatchEvent(new KeyboardEvent('keydown', opts));
-    inputEl.dispatchEvent(new KeyboardEvent('keypress', opts));
-    inputEl.dispatchEvent(new KeyboardEvent('keyup', opts));
-  } catch (e) { /* ignore */ }
+  // NOTE: Do NOT dispatch Enter here. Meta AI also submits on Enter, so combining it
+  // with the button click below would send the SAME prompt twice. Click the button
+  // first and only fall back to Enter if no send button can be found.
 
   // Walk up from the input to find the closest send button
   let container: HTMLElement | null = inputEl;
@@ -169,6 +150,15 @@ function findAndClickSubmit(inputEl: HTMLElement): boolean {
       return true;
     }
   }
+
+  // Last resort: dispatch Enter only when no send button could be found
+  try {
+    const opts = { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true };
+    inputEl.dispatchEvent(new KeyboardEvent('keydown', opts));
+    inputEl.dispatchEvent(new KeyboardEvent('keypress', opts));
+    inputEl.dispatchEvent(new KeyboardEvent('keyup', opts));
+    console.log('[MAISG] No send button found, dispatched Enter key.');
+  } catch (e) { /* ignore */ }
 
   return true;
 }
@@ -287,7 +277,15 @@ function sleep(ms: number) {
 }
 
 // ─── Message handler ───
-chrome.runtime.onMessage.addListener((message: ChromeMessage, _sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => {
+// Guard against registering duplicate listeners when the content script is injected
+// multiple times (manifest + scripting.executeScript + retries). Without this guard,
+// every injected copy of this script responds to SEND_PROMPT_TO_META, so the same
+// prompt gets typed and submitted to Meta AI over and over.
+const MAISG_LISTENER_FLAG = '__maisgMessageHandlerRegistered';
+if (!(window as any)[MAISG_LISTENER_FLAG]) {
+  (window as any)[MAISG_LISTENER_FLAG] = true;
+
+  chrome.runtime.onMessage.addListener((message: ChromeMessage, _sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => {
   if (message.type === 'PING') {
     sendResponse({ status: 'PONG', url: window.location.href });
     return true;
@@ -388,4 +386,5 @@ chrome.runtime.onMessage.addListener((message: ChromeMessage, _sender: chrome.ru
 
     return true; // keep message channel open
   }
-});
+  });
+}
