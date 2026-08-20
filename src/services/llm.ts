@@ -143,13 +143,13 @@ Your task is to take any raw/simple video script or idea, analyze its mood and c
 - Pop Art: "pop art Andy Warhol style, high contrast vibrant color blocks, screen print poster, halftone dots"
 - Low-Poly: "low-poly 3D geometric, flat shaded polygons, faceted blocky art, modern digital sculpture"
 
----
-
-### INSTRUCTIONS:
-1. Divide the provided script into EXACTLY ${effectiveSettings.sceneCount || 5} distinct visual scenes.
-2. CRITICAL REQUIREMENT: All generated image prompts MUST be written strictly in clear, descriptive ENGLISH. If the video script is in Hindi or any non-English language, translate the visual descriptions into rich English prompts so Meta AI can generate them without error! Do NOT include Hindi text in the "prompt" field!
-3. Follow the PROMPT FORMULA and automatically enrich each scene using complementary selections from the Knowledge Base (Camera, Lighting, Environment, Color Grading, and Style specs).${styleInstructions}
-4. Output MUST be a valid JSON array of objects, with keys: "sceneNumber", "scriptExcerpt", and "prompt". Do NOT include markdown text formatting or codeblock ticks around the JSON.`;
+### INSTRUCTIONS & CRITICAL RULES:
+1. CHARACTER & VISUAL CONSISTENCY: Ensure main characters retain identical facial features, hair style, clothing, color theme, and distinct visual attributes across ALL scene prompts so that Meta AI generates cohesive, recurring characters throughout the story!
+2. ULTRA-HIGH QUALITY SPECS: Always append high-end render quality specs to every prompt (e.g., "masterpiece quality, 8k uhd resolution, pristine visual clarity, award-winning photography, hyper-detailed textures, sharp focus").
+3. Divide the provided script into EXACTLY ${effectiveSettings.sceneCount || 5} distinct visual scenes.
+4. CRITICAL REQUIREMENT: All generated image prompts MUST be written strictly in clear, descriptive ENGLISH. If the video script is in Hindi or any non-English language, translate the visual descriptions into rich English prompts so Meta AI can generate them without error! Do NOT include Hindi text in the "prompt" field!
+5. Follow the PROMPT FORMULA and automatically enrich each scene using complementary selections from the Knowledge Base (Camera, Lighting, Environment, Color Grading, Character Consistency, and Style specs).${styleInstructions}
+6. Output MUST be a valid JSON array of objects, with keys: "sceneNumber", "scriptExcerpt", and "prompt". Do NOT include markdown text formatting or codeblock ticks around the JSON.`;
 
     const userPrompt = `Script:\n${scriptText}`;
 
@@ -413,6 +413,8 @@ Your task is to take any raw/simple video script or idea, analyze its mood and c
     const result: Scene[] = [];
 
     const styleModifier = STYLE_PROMPT_MAP[style] || style;
+    const qualityTag = 'masterpiece quality, 8k uhd, pristine visual clarity, sharp focus, hyper-detailed textures';
+    const consistencyTag = 'consistent character design and visual features across scenes';
 
     for (let i = 0; i < chunkCount; i++) {
       const chunkSentences = lines.slice(i * scenesPerChunk, (i + 1) * scenesPerChunk);
@@ -430,8 +432,8 @@ Your task is to take any raw/simple video script or idea, analyze its mood and c
       ];
 
       const promptText = hasNonAscii
-        ? `Visual scene showing: ${nonAsciiVisuals[i % nonAsciiVisuals.length]}, ${styleModifier}, aspect ratio: ${frame}`
-        : `Visual scene showing: ${excerpt}. ${styleModifier}, aspect ratio: ${frame}`;
+        ? `Visual scene showing: ${nonAsciiVisuals[i % nonAsciiVisuals.length]}, ${consistencyTag}, ${styleModifier}, ${qualityTag}, aspect ratio: ${frame}`
+        : `Visual scene showing: ${excerpt}. ${consistencyTag}, ${styleModifier}, ${qualityTag}, aspect ratio: ${frame}`;
 
       result.push({
         id: `scene-${Date.now()}-${i}`,
@@ -450,7 +452,7 @@ Your task is to take any raw/simple video script or idea, analyze its mood and c
         id: `scene-${Date.now()}-${idx}`,
         sceneNumber: idx + 1,
         scriptExcerpt: `Additional scene detail for script`,
-        prompt: `Visual scene showing narrative storytelling illustration of scene ${idx + 1}, ${styleModifier}, aspect ratio: ${frame}`,
+        prompt: `Visual scene showing narrative storytelling illustration of scene ${idx + 1}, ${consistencyTag}, ${styleModifier}, ${qualityTag}, aspect ratio: ${frame}`,
         status: 'pending',
         selected: true
       });

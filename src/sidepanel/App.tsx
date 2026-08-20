@@ -497,7 +497,7 @@ export const App: React.FC = () => {
       />
 
       <main className="flex-1 p-4 space-y-4 max-w-2xl mx-auto w-full pb-10">
-        {activeMode === 'downloader' ? (
+        <div className={activeMode === 'downloader' ? 'space-y-4' : 'hidden'}>
           <QuickDownloader
             activeMetaTabId={activeMetaTabId}
             fileNamePattern={settings.fileNamePattern}
@@ -505,56 +505,56 @@ export const App: React.FC = () => {
             injectContentScript={injectContentScript}
             ensureContentScript={ensureContentScript}
           />
-        ) : (
-          <>
-            <ScriptInput
-              scriptText={scriptText}
-              onScriptChange={setScriptText}
-              onAnalyze={handleAnalyzeScript}
-              isAnalyzing={isAnalyzing}
-              onClear={handleClearScript}
-              imageStyle={settings.imageStyle || 'Cinematic'}
-              onStyleChange={(style) => setSettings((prev) => ({ ...prev, imageStyle: style }))}
-              imageFrame={settings.imageFrame || 'Landscape (16:9)'}
-              onFrameChange={(frame) => setSettings((prev) => ({ ...prev, imageFrame: frame }))}
-              sceneCount={settings.sceneCount || 5}
-              onSceneCountChange={(count) => setSettings((prev) => ({ ...prev, sceneCount: count }))}
-            />
+        </div>
 
-            <GenerationProgress
-              generationState={generationState}
-              scenes={scenes}
-              currentIndex={currentIndex}
-              onStart={handleStart}
-              onPause={handlePause}
-              onResume={handleResume}
-              onReset={handleReset}
-              errorMsg={errorMsg}
-            />
+        <div className={activeMode === 'prompter' ? 'space-y-4' : 'hidden'}>
+          <ScriptInput
+            scriptText={scriptText}
+            onScriptChange={setScriptText}
+            onAnalyze={handleAnalyzeScript}
+            isAnalyzing={isAnalyzing}
+            onClear={handleClearScript}
+            imageStyle={settings.imageStyle || 'Photorealistic / 8K'}
+            onStyleChange={(style) => setSettings((prev) => ({ ...prev, imageStyle: style }))}
+            imageFrame={settings.imageFrame || 'Landscape (16:9)'}
+            onFrameChange={(frame) => setSettings((prev) => ({ ...prev, imageFrame: frame }))}
+            sceneCount={settings.sceneCount || 5}
+            onSceneCountChange={(count) => setSettings((prev) => ({ ...prev, sceneCount: count }))}
+          />
 
-            <PromptList
-              scenes={scenes}
-              onUpdatePrompt={handleUpdatePrompt}
-              onDeleteScene={handleDeleteScene}
-              onAddScene={handleAddScene}
-              onRegenerateScene={handleRegenerateScene}
-              isGenerating={generationState === 'generating'}
-            />
+          <GenerationProgress
+            generationState={generationState}
+            scenes={scenes}
+            currentIndex={currentIndex}
+            onStart={handleStart}
+            onPause={handlePause}
+            onResume={handleResume}
+            onReset={handleReset}
+            errorMsg={errorMsg}
+          />
 
-            <ImageGallery
-              scenes={scenes}
-              onToggleSelect={handleToggleSelect}
-              onSelectAll={handleSelectAll}
-              onDeselectAll={handleDeselectAll}
-              onDownloadSelected={handleDownloadSelected}
-              onRegenerateScene={handleRegenerateScene}
-              isGenerating={generationState === 'generating'}
-              isDownloading={isDownloading}
-              failedDownloadIds={failedDownloadIds}
-              onRetryFailed={handleRetryFailedDownloads}
-            />
-          </>
-        )}
+          <PromptList
+            scenes={scenes}
+            onUpdatePrompt={handleUpdatePrompt}
+            onDeleteScene={handleDeleteScene}
+            onAddScene={handleAddScene}
+            onRegenerateScene={handleRegenerateScene}
+            isGenerating={generationState === 'generating'}
+          />
+
+          <ImageGallery
+            scenes={scenes}
+            onToggleSelect={handleToggleSelect}
+            onSelectAll={handleSelectAll}
+            onDeselectAll={handleDeselectAll}
+            onDownloadSelected={handleDownloadSelected}
+            onRegenerateScene={handleRegenerateScene}
+            isGenerating={generationState === 'generating'}
+            isDownloading={isDownloading}
+            failedDownloadIds={failedDownloadIds}
+            onRetryFailed={handleRetryFailedDownloads}
+          />
+        </div>
       </main>
 
       <SettingsModal
