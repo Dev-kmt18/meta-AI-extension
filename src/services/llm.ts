@@ -49,10 +49,11 @@ export const LlmService = {
 
     let styleInstructions = '';
     if (effectiveSettings.imageStyle) {
-      styleInstructions += `\n- The visual style for all image prompts MUST be: "${effectiveSettings.imageStyle}" (e.g. realistic, funny, horror, colorful, stick man, etc.).`;
+      const promptModifier = STYLE_PROMPT_MAP[effectiveSettings.imageStyle] || effectiveSettings.imageStyle;
+      styleInstructions += `\n- The visual style for all image prompts MUST incorporate these exact style keywords: "${promptModifier}".`;
     }
     if (effectiveSettings.imageFrame) {
-      styleInstructions += `\n- The aspect ratio/frame for all image prompts MUST be: "${effectiveSettings.imageFrame}" (e.g., aspect ratio 16:9, aspect ratio 9:16, 1:1, etc.). Include the aspect ratio tag at the end of the prompt if appropriate.`;
+      styleInstructions += `\n- The aspect ratio/frame for all image prompts MUST be: "${effectiveSettings.imageFrame}". Include the aspect ratio tag at the end of the prompt if appropriate.`;
     }
     if (effectiveSettings.sceneCount) {
       styleInstructions += `\n- You MUST divide the provided script into EXACTLY ${effectiveSettings.sceneCount} distinct visual scenes.`;
@@ -326,6 +327,8 @@ Output MUST be a valid JSON array of objects, with keys: "sceneNumber", "scriptE
     const scenesPerChunk = Math.ceil(lines.length / chunkCount);
     const result: Scene[] = [];
 
+    const styleModifier = STYLE_PROMPT_MAP[style] || style;
+
     for (let i = 0; i < chunkCount; i++) {
       const chunkSentences = lines.slice(i * scenesPerChunk, (i + 1) * scenesPerChunk);
       const excerpt = chunkSentences.join('. ');
@@ -342,8 +345,8 @@ Output MUST be a valid JSON array of objects, with keys: "sceneNumber", "scriptE
       ];
 
       const promptText = hasNonAscii
-        ? `Cinematic photo, 8k, highly detailed visual scene showing: ${nonAsciiVisuals[i % nonAsciiVisuals.length]}, symbolizing the narrative meaning of this story moment. Visual style: ${style}, aspect ratio: ${frame}`
-        : `Cinematic photo, 8k, highly detailed visual scene showing: ${excerpt}. Visual style: ${style}, aspect ratio: ${frame}`;
+        ? `Visual scene showing: ${nonAsciiVisuals[i % nonAsciiVisuals.length]}, ${styleModifier}, aspect ratio: ${frame}`
+        : `Visual scene showing: ${excerpt}. ${styleModifier}, aspect ratio: ${frame}`;
 
       result.push({
         id: `scene-${Date.now()}-${i}`,
@@ -362,7 +365,7 @@ Output MUST be a valid JSON array of objects, with keys: "sceneNumber", "scriptE
         id: `scene-${Date.now()}-${idx}`,
         sceneNumber: idx + 1,
         scriptExcerpt: `Additional scene detail for script`,
-        prompt: `Detailed artistic ${style} illustration of scene ${idx + 1}: narrative storytelling illustration with expressive character composition, ${style} visual style, aspect ratio ${frame}`,
+        prompt: `Visual scene showing narrative storytelling illustration of scene ${idx + 1}, ${styleModifier}, aspect ratio: ${frame}`,
         status: 'pending',
         selected: true
       });

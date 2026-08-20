@@ -83,7 +83,7 @@ export const ScriptInput: React.FC<ScriptInputProps> = ({
 
       {/* Settings Grid */}
       <div className="grid grid-cols-3 gap-3 bg-slate-900/40 p-3 rounded-xl border border-slate-700/40">
-        {/* Style Dropdown */}
+        {/* Style Dropdown (All 18 Custom Presets) */}
         <div className="space-y-1">
           <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
             Image Style
@@ -91,18 +91,26 @@ export const ScriptInput: React.FC<ScriptInputProps> = ({
           <select
             value={imageStyle}
             onChange={(e) => onStyleChange(e.target.value)}
-            className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500 font-medium cursor-pointer"
+            className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500 font-medium cursor-pointer"
           >
-            <option value="Cinematic">Cinematic</option>
-            <option value="Horror">Horror 👻</option>
-            <option value="Funny">Funny 😂</option>
-            <option value="Colorful">Colorful 🌈</option>
-            <option value="Stick Man">Stick Man ✏️</option>
-            <option value="Realistic">Realistic 📸</option>
-            <option value="Anime / Manga">Anime 🌸</option>
-            <option value="3D Pixar / Disney">3D Render 🎨</option>
-            <option value="Watercolor Painting">Watercolor 🖌️</option>
-            <option value="Cyberpunk">Cyberpunk 🏙️</option>
+            <option value="Photorealistic / 8K">Photorealistic 8K 📸</option>
+            <option value="3D Pixar / Disney">3D Pixar / Disney 🎨</option>
+            <option value="Japanese Anime / Ghibli">Anime / Ghibli 🌸</option>
+            <option value="Vintage Comic Book">Comic Book 💥</option>
+            <option value="Cyberpunk / Sci-Fi">Cyberpunk 🏙️</option>
+            <option value="Soft Watercolor Painting">Watercolor 🖌️</option>
+            <option value="Classic Renaissance Oil Painting">Oil Painting 🏛️</option>
+            <option value="Retro 16-Bit Pixel Art">16-Bit Pixel Art 👾</option>
+            <option value="Claymation / Stop-Motion">Claymation 🧸</option>
+            <option value="Minimalist Vector / Flat Art">Flat Vector 📐</option>
+            <option value="Stickman / Doodle Art">Stickman Doodle ✏️</option>
+            <option value="Dark Gothic Horror">Gothic Horror 👻</option>
+            <option value="Charcoal & Pencil Sketch">Pencil Sketch 📝</option>
+            <option value="Synthwave / 80s Retro Neon">80s Synthwave 🌅</option>
+            <option value="Papercut / 3D Origami">3D Origami 📄</option>
+            <option value="Steampunk Fantasy">Steampunk ⚙️</option>
+            <option value="Pop Art / Andy Warhol">Pop Art 🎨</option>
+            <option value="Low-Poly 3D Geometric">Low-Poly 3D 🧊</option>
           </select>
         </div>
 
@@ -114,33 +122,35 @@ export const ScriptInput: React.FC<ScriptInputProps> = ({
           <select
             value={imageFrame}
             onChange={(e) => onFrameChange(e.target.value)}
-            className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500 font-medium cursor-pointer"
+            className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500 font-medium cursor-pointer"
           >
             <option value="Landscape (16:9)">Landscape (16:9)</option>
             <option value="Portrait (9:16)">Portrait (9:16)</option>
             <option value="Square (1:1)">Square (1:1)</option>
-            <option value="Wide (21:9)">Wide (21:9)</option>
+            <option value="Wide Cinematic (21:9)">Wide (21:9)</option>
+            <option value="Social Post (4:5)">Social Post (4:5)</option>
+            <option value="Classic TV (4:3)">Classic TV (4:3)</option>
+            <option value="Ultrawide (32:9)">Ultrawide (32:9)</option>
           </select>
         </div>
 
-        {/* Number of Images */}
+        {/* Number of Images (Manual Input) */}
         <div className="space-y-1">
           <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
             No. of Images
           </label>
-          <select
+          <input
+            type="number"
+            min={1}
+            max={100}
             value={sceneCount}
-            onChange={(e) => onSceneCountChange(parseInt(e.target.value, 10))}
-            className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500 font-medium cursor-pointer"
-          >
-            <option value={3}>3 Scenes</option>
-            <option value={5}>5 Scenes</option>
-            <option value={8}>8 Scenes</option>
-            <option value={10}>10 Scenes</option>
-            <option value={12}>12 Scenes</option>
-            <option value={15}>15 Scenes</option>
-            <option value={20}>20 Scenes</option>
-          </select>
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              onSceneCountChange(isNaN(val) ? 1 : Math.max(1, Math.min(100, val)));
+            }}
+            placeholder="e.g. 10"
+            className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white font-mono font-bold focus:outline-none focus:border-blue-500"
+          />
         </div>
       </div>
 
