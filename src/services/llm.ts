@@ -92,7 +92,7 @@ Output MUST be a valid JSON array of objects, with keys: "sceneNumber", "scriptE
 
       return this.parseScenesFromJson(jsonText, scriptText, effectiveSettings.sceneCount, effectiveSettings.imageStyle, effectiveSettings.imageFrame);
     } catch (err: any) {
-      console.warn('API call failed, generating fallback scenes from script:', err);
+      console.log('[MAISG] Using local scene generator fallback.');
       // Fallback local scene generator if API fails
       return this.generateFallbackScenesFromScript(scriptText, effectiveSettings.sceneCount, effectiveSettings.imageStyle, effectiveSettings.imageFrame);
     }
@@ -104,14 +104,22 @@ Output MUST be a valid JSON array of objects, with keys: "sceneNumber", "scriptE
     const modelsToTry = [modelCandidate, 'gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro'];
 
     let lastError: Error | null = null;
+    const isOAuth = settings.apiKey.startsWith('AQ.') || settings.apiKey.startsWith('ya29.');
 
     for (const model of modelsToTry) {
       try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${settings.apiKey}`;
+        const url = isOAuth
+          ? `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`
+          : `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${settings.apiKey}`;
+
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (isOAuth) {
+          headers['Authorization'] = `Bearer ${settings.apiKey}`;
+        }
         
         const response = await fetch(url, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({
             contents: [
               {

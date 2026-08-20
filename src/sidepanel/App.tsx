@@ -240,7 +240,7 @@ export const App: React.FC = () => {
         return imageUrl; // Success!
       } catch (err: any) {
         lastError = err.message;
-        console.warn(`[SidePanel] Attempt ${attempt} failed:`, err.message);
+        console.log(`[SidePanel] Attempt ${attempt} result:`, err.message);
 
         // Do not retry typing into Meta AI if Meta AI stopped the request
         if (err.message.includes('Request was stopped') || err.message.includes('unable to generate')) {
