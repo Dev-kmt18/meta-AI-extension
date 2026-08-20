@@ -155,9 +155,10 @@ Your task is to take any raw/simple video script or idea, analyze its mood and c
 2. NO SCENE NUMBERS IN PROMPT: Do NOT include words like "Scene 1", "Scene 2", "Image 18", or script line numbers inside the prompt text itself!
 3. CHARACTER & VISUAL CONSISTENCY: Ensure main characters retain identical facial features, hair style, clothing, color theme, and distinct visual attributes across ALL scene prompts so that Meta AI generates cohesive, recurring characters throughout the story!
 4. ULTRA-HIGH QUALITY SPECS: Always append high-end render quality specs to every prompt (e.g., "masterpiece quality, 8k uhd resolution, pristine visual clarity, award-winning photography, hyper-detailed textures, sharp focus").${textOptionRule}
-5. Divide the provided script into EXACTLY ${effectiveSettings.sceneCount || 5} distinct visual scenes.
-6. CRITICAL REQUIREMENT: All generated image prompts MUST be written strictly in clear, descriptive ENGLISH. If the video script is in Hindi or any non-English language, translate the visual descriptions into rich English prompts so Meta AI can generate them without error! Do NOT include Hindi text in the "prompt" field!
-7. Follow the PROMPT FORMULA and automatically enrich each scene using complementary selections from the Knowledge Base (Camera, Lighting, Environment, Color Grading, Character Consistency, and Style specs).${styleInstructions}
+5. MICRO-SHOT SUB-SEGMENTATION: If the requested scene count (${effectiveSettings.sceneCount || 5}) is larger than the number of script lines, break sentences into sequential micro-visual shots (e.g., Shot A: Wide establishing shot, Shot B: Medium action, Shot C: Character close-up reaction, Shot D: Atmospheric background beat).
+6. Divide the provided script into EXACTLY ${effectiveSettings.sceneCount || 5} distinct visual scenes.
+7. CRITICAL REQUIREMENT: All generated image prompts MUST be written strictly in clear, descriptive ENGLISH. If the video script is in Hindi or any non-English language, translate the visual descriptions into rich English prompts so Meta AI can generate them without error! Do NOT include Hindi text in the "prompt" field!
+8. Follow the PROMPT FORMULA and automatically enrich each scene using complementary selections from the Knowledge Base (Camera, Lighting, Environment, Color Grading, Character Consistency, and Style specs).${styleInstructions}
 8. Output MUST be a valid JSON array of objects, with keys: "sceneNumber", "scriptExcerpt", and "prompt". Do NOT include markdown text formatting or codeblock ticks around the JSON.`;
 
     const userPrompt = `Script:\n${scriptText}`;

@@ -153,11 +153,25 @@ export const ScriptInput: React.FC<ScriptInputProps> = ({
           </select>
         </div>
 
-        {/* Number of Images (Manual Input) */}
+        {/* Number of Images (Manual Input + Auto ✨ Button) */}
         <div className="space-y-1">
-          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-            No. of Images
-          </label>
+          <div className="flex items-center justify-between">
+            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+              No. of Images
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                const lines = scriptText.split(/\n+|\. |!|\?/).map(s => s.trim()).filter(s => s.length > 3).length;
+                const calc = lines > 0 ? Math.max(1, Math.min(100, Math.ceil(lines * 1.2))) : 5;
+                onSceneCountChange(calc);
+              }}
+              className="text-[9px] font-extrabold text-blue-400 hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 px-1.5 py-0.5 rounded transition"
+              title="Automatically calculate ideal scene count based on script length"
+            >
+              Auto ✨
+            </button>
+          </div>
           <input
             type="number"
             min={1}
@@ -172,6 +186,22 @@ export const ScriptInput: React.FC<ScriptInputProps> = ({
           />
         </div>
       </div>
+
+      {/* Micro-Shot Sub-Segmentation Helper Badge */}
+      {scriptText.trim().length > 0 && (() => {
+        const lineCount = scriptText.split(/\n+|\. |!|\?/).map(s => s.trim()).filter(s => s.length > 3).length;
+        if (lineCount > 0 && sceneCount > lineCount * 2) {
+          return (
+            <div className="text-[11px] text-indigo-300 bg-indigo-950/40 border border-indigo-500/30 px-3 py-1.5 rounded-lg flex items-center gap-1.5 animate-fadeIn">
+              <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+              <span>
+                Script has <strong>{lineCount} lines</strong>. AI will break these down into <strong>{sceneCount} micro-visual shots</strong> (establishing wide shots, character close-ups, medium action angles, reaction shots).
+              </span>
+            </div>
+          );
+        }
+        return null;
+      })()}
 
       {/* Action Button */}
       <button
