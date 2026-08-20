@@ -520,6 +520,8 @@ export const App: React.FC = () => {
             onFrameChange={(frame) => setSettings((prev) => ({ ...prev, imageFrame: frame }))}
             sceneCount={settings.sceneCount || 5}
             onSceneCountChange={(count) => setSettings((prev) => ({ ...prev, sceneCount: count }))}
+            imageTextOption={settings.imageTextOption || 'without_text'}
+            onTextOptionChange={(opt) => setSettings((prev) => ({ ...prev, imageTextOption: opt }))}
           />
 
           <GenerationProgress

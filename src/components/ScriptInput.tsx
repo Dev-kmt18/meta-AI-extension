@@ -14,6 +14,8 @@ interface ScriptInputProps {
   onFrameChange: (frame: string) => void;
   sceneCount: number;
   onSceneCountChange: (count: number) => void;
+  imageTextOption?: 'without_text' | 'with_text';
+  onTextOptionChange?: (option: 'without_text' | 'with_text') => void;
 }
 
 export const ScriptInput: React.FC<ScriptInputProps> = ({
@@ -27,7 +29,9 @@ export const ScriptInput: React.FC<ScriptInputProps> = ({
   imageFrame,
   onFrameChange,
   sceneCount,
-  onSceneCountChange
+  onSceneCountChange,
+  imageTextOption = 'without_text',
+  onTextOptionChange
 }) => {
   const handlePaste = async () => {
     try {
@@ -81,9 +85,9 @@ export const ScriptInput: React.FC<ScriptInputProps> = ({
         </div>
       </div>
 
-      {/* Settings Grid */}
-      <div className="grid grid-cols-3 gap-3 bg-slate-900/40 p-3 rounded-xl border border-slate-700/40">
-        {/* Style Dropdown (All 18 Custom Presets) */}
+      {/* Settings Grid (4 Columns) */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 bg-slate-900/40 p-3 rounded-xl border border-slate-700/40">
+        {/* Style Dropdown */}
         <div className="space-y-1">
           <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
             Image Style
@@ -131,6 +135,21 @@ export const ScriptInput: React.FC<ScriptInputProps> = ({
             <option value="Social Post (4:5)">Social Post (4:5)</option>
             <option value="Classic TV (4:3)">Classic TV (4:3)</option>
             <option value="Ultrawide (32:9)">Ultrawide (32:9)</option>
+          </select>
+        </div>
+
+        {/* Text in Image Option */}
+        <div className="space-y-1">
+          <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+            Text in Image
+          </label>
+          <select
+            value={imageTextOption}
+            onChange={(e) => onTextOptionChange && onTextOptionChange(e.target.value as any)}
+            className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-blue-500 font-medium cursor-pointer"
+          >
+            <option value="without_text">Without Text 🚫</option>
+            <option value="with_text">With Dialogue Text 💬</option>
           </select>
         </div>
 

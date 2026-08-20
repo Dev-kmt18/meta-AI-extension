@@ -110,6 +110,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <option value="number_only">1.png, 2.png, 3.png (Numbers Only)</option>
               <option value="padded_num">01.png, 02.png, 03.png (Padded Numbers)</option>
               <option value="scene_num">scene-01.png, scene-02.png (Scene Prefix)</option>
+              <option value="default_original">Default Original Name (Meta AI filename)</option>
             </select>
           </div>
 

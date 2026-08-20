@@ -11,8 +11,8 @@ interface PageImage {
 
 interface QuickDownloaderProps {
   activeMetaTabId?: number;
-  fileNamePattern?: 'number_only' | 'scene_num' | 'padded_num';
-  onPatternChange: (pattern: 'number_only' | 'scene_num' | 'padded_num') => void;
+  fileNamePattern?: 'number_only' | 'scene_num' | 'padded_num' | 'default_original';
+  onPatternChange: (pattern: 'number_only' | 'scene_num' | 'padded_num' | 'default_original') => void;
   injectContentScript: (tabId: number) => Promise<boolean>;
   ensureContentScript: (tabId: number) => Promise<boolean>;
 }

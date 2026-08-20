@@ -27,7 +27,7 @@ export const FileSaverService = {
 
   async saveImagesToDirectory(
     scenes: Scene[],
-    pattern: 'number_only' | 'scene_num' | 'padded_num' = 'number_only',
+    pattern: 'number_only' | 'scene_num' | 'padded_num' | 'default_original' = 'number_only',
     folderName: string = ''
   ): Promise<{ success: boolean; count: number; failedIds: string[]; error?: string }> {
     const selectedScenes = scenes.filter((s) => s.selected && s.imageUrl);
@@ -38,12 +38,21 @@ export const FileSaverService = {
 
     const cleanFolder = folderName.trim().replace(/[\\/:*?"<>|]/g, '');
 
-    const getFileName = (index: number) => {
+    const getFileName = (index: number, scene?: Scene) => {
       const num = index + 1;
       const paddedNum = String(num).padStart(2, '0');
       let name = `${num}.png`;
       if (pattern === 'padded_num') name = `${paddedNum}.png`;
       if (pattern === 'scene_num') name = `scene-${paddedNum}.png`;
+      if (pattern === 'default_original') {
+        const src = scene?.imageUrl || '';
+        const rawFilename = src.substring(src.lastIndexOf('/') + 1).split('?')[0];
+        if (rawFilename && rawFilename.length > 4 && (rawFilename.includes('.') || rawFilename.startsWith('scontent') || rawFilename.startsWith('fbcdn'))) {
+          name = rawFilename.includes('.') ? rawFilename : `${rawFilename}.png`;
+        } else {
+          name = `meta_ai_image_${paddedNum}.png`;
+        }
+      }
       return cleanFolder ? `${cleanFolder}/${name}` : name;
     };
 
@@ -62,35 +71,26 @@ export const FileSaverService = {
           savedDirectoryHandle = dirHandle;
         }
 
-        // If folder name specified, create/get subfolder handle
-        let targetHandle = dirHandle;
+        let targetDir = dirHandle;
         if (cleanFolder) {
-          targetHandle = await dirHandle.getDirectoryHandle(cleanFolder, { create: true });
+          targetDir = await dirHandle.getDirectoryHandle(cleanFolder, { create: true });
         }
 
         let savedCount = 0;
         for (let i = 0; i < selectedScenes.length; i++) {
           const scene = selectedScenes[i];
-          if (!scene.imageUrl) {
-            failedIds.push(scene.id);
-            continue;
-          }
-
-          const num = i + 1;
-          const paddedNum = String(num).padStart(2, '0');
-          let baseName = `${num}.png`;
-          if (pattern === 'padded_num') baseName = `${paddedNum}.png`;
-          if (pattern === 'scene_num') baseName = `scene-${paddedNum}.png`;
+          const fileName = getFileName(i, scene);
+          const baseName = fileName.includes('/') ? fileName.split('/')[1] : fileName;
 
           try {
-            const blob = await this.fetchImageBlob(scene.imageUrl);
-            const fileHandle = await targetHandle.getFileHandle(baseName, { create: true });
+            const blob = await this.fetchImageBlob(scene.imageUrl!);
+            const fileHandle = await targetDir.getFileHandle(baseName, { create: true });
             const writable = await fileHandle.createWritable();
             await writable.write(blob);
             await writable.close();
             savedCount++;
-          } catch (err) {
-            console.error(`Failed to save ${baseName}:`, err);
+          } catch (e) {
+            console.error(`Failed to save image ${baseName}:`, e);
             failedIds.push(scene.id);
           }
         }
@@ -105,7 +105,7 @@ export const FileSaverService = {
 
   async chromeDownload(
     selectedScenes: Scene[],
-    getFileName: (index: number) => string
+    getFileName: (index: number, scene?: Scene) => string
   ): Promise<{ success: boolean; count: number; failedIds: string[]; error?: string }> {
     let count = 0;
     const failedIds: string[] = [];
@@ -116,7 +116,7 @@ export const FileSaverService = {
         continue;
       }
 
-      const fileName = getFileName(i);
+      const fileName = getFileName(i, scene);
 
       try {
         // Fetch image via background script (bypasses CDN CORS restrictions)

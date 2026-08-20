@@ -6,12 +6,13 @@ export interface LlmSettings {
   model: string;
   customEndpoint?: string;
   systemPrompt?: string;
-  fileNamePattern?: 'number_only' | 'scene_num' | 'padded_num'; // e.g. '1.png', 'scene-01.png', '01.png'
+  fileNamePattern?: 'number_only' | 'scene_num' | 'padded_num' | 'default_original'; // e.g. '1.png', 'scene-01.png', '01.png', or 'default original name'
   useOwnAi?: boolean;
   ownApiKey?: string;
   imageStyle?: string;
   imageFrame?: string;
   sceneCount?: number;
+  imageTextOption?: 'without_text' | 'with_text';
 }
 
 export type SceneStatus = 'pending' | 'generating' | 'completed' | 'failed';
