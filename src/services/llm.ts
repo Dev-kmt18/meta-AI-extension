@@ -50,21 +50,75 @@ export const LlmService = {
     let styleInstructions = '';
     if (effectiveSettings.imageStyle) {
       const promptModifier = STYLE_PROMPT_MAP[effectiveSettings.imageStyle] || effectiveSettings.imageStyle;
-      styleInstructions += `\n- The visual style for all image prompts MUST incorporate these exact style keywords: "${promptModifier}".`;
+      styleInstructions += `\n- The visual style for all image prompts MUST strictly incorporate these style keywords: "${promptModifier}".`;
     }
     if (effectiveSettings.imageFrame) {
       styleInstructions += `\n- The aspect ratio/frame for all image prompts MUST be: "${effectiveSettings.imageFrame}". Include the aspect ratio tag at the end of the prompt if appropriate.`;
     }
-    if (effectiveSettings.sceneCount) {
-      styleInstructions += `\n- You MUST divide the provided script into EXACTLY ${effectiveSettings.sceneCount} distinct visual scenes.`;
-    }
 
-    const systemPrompt = `You are an expert film director and AI image prompt engineer.
-Analyze the video script and split it into distinct visual scenes.${styleInstructions}
-CRITICAL REQUIREMENT: All generated image prompts MUST be written in clear, descriptive ENGLISH. If the video script is in Hindi or any non-English language, translate the visual descriptions into rich English prompts so Meta AI can generate them without error! Do NOT include Hindi text in the "prompt" field!
-For each scene, output a highly detailed, descriptive, rich, and creative English image prompt suitable for AI image generation (like Meta AI).
-The prompt should be very descriptive, detailing the character expressions, setting, actions, lighting, camera angle, and mood. Avoid simple short prompts.
-Output MUST be a valid JSON array of objects, with keys: "sceneNumber", "scriptExcerpt", and "prompt". Do NOT include markdown text formatting or codeblock ticks around the JSON.`;
+    const systemPrompt = `### SYSTEM ROLE: MASTER IMAGE PROMPT GENERATOR
+
+You are an expert AI prompt engineer specialized in text-to-image models (Meta AI, Midjourney, Stable Diffusion). 
+Your task is to take any raw/simple video script or idea, analyze its mood and context, select the most complementary visual layers from the Knowledge Base below, and generate ultra-high-quality, single-line image generation prompts for each scene.
+
+---
+
+### PROMPT FORMULA:
+[Detailed Subject & Action] + [Camera Angle & Framing] + [Environment & Weather Details] + [Lighting & Atmosphere] + [Color Grading] + [Style Keywords & Render Quality]
+
+---
+
+### KNOWLEDGE BASE (SELECT & INJECT AUTOMATICALLY):
+
+1. CAMERA & FRAMING:
+- Close-up: "macro close-up portrait, sharp focus on facial expression, shallow depth of field, creamy bokeh background"
+- Wide/Landscape: "wide-angle cinematic landscape, epic scale, deep focal depth, rule of thirds"
+- Dynamic/Hero: "low-angle dramatic hero shot, powerful perspective, dynamic pose"
+- Aerial: "isometric top-down view, high-angle bird's eye perspective"
+
+2. LIGHTING & ATMOSPHERE:
+- Warm/Natural: "golden hour sunlight, soft sun flares, warm natural glow, volumetric god rays"
+- Cinematic/Moody: "chiaroscuro high-contrast lighting, deep dramatic shadows, volumetric fog, rim lighting"
+- Sci-Fi/Urban: "vibrant neon glow, rain-slicked surface reflections, ambient atmospheric haze"
+- Studio: "softbox studio lighting, clean rim light, even subsurface scattering"
+
+3. ENVIRONMENT & TEXTURES:
+- Weather/Elements: "dense morning mist, light rain with reflective puddles, falling autumn leaves, drifting dust particles"
+- Surroundings: "intricately detailed background, layered foreground elements, tactile surfaces"
+
+4. COLOR GRADING:
+- Vivid: "vibrant saturated colors, rich complementary contrast"
+- Cinematic: "moody teal and orange cinematic color grading"
+- Soft/Muted: "pastel color palette, desaturated earthy tones"
+- Monochromatic: "stark duo-tone high contrast"
+
+5. STYLES & RENDERING SPECS:
+- Photorealistic: "photorealistic, 8k uhd, shot on 85mm lens, natural skin texture, sharp focus"
+- 3D Pixar: "3D Disney Pixar animation style, cute expressive features, octane render, smooth textures, warm soft lighting"
+- Anime/Ghibli: "Studio Ghibli style, Hayao Miyazaki aesthetic, soft anime visual, hand-painted background, cel shading, cozy atmosphere"
+- Vintage Comic: "vintage 1960s comic book panel, bold ink outlines, halftone Ben-Day dots, retro pop art"
+- Cyberpunk: "cyberpunk aesthetic, glowing purple and cyan neon lights, rainy street reflections, futuristic dystopia"
+- Watercolor: "soft watercolor painting, pastel color wash, bleeding ink edges, textured watercolor paper"
+- Renaissance Oil: "16th century Renaissance oil painting, Rembrandt chiaroscuro lighting, thick impasto brushstrokes, canvas texture"
+- 16-Bit Pixel: "16-bit pixel art, isometric view, retro SNES game sprite, limited vibrant palette"
+- Claymation: "handcrafted claymation, plasticine clay texture, visible thumbprints, stop-motion animation look"
+- Minimalist Vector: "minimalist flat vector illustration, clean geometric lines, solid shapes, modern poster art"
+- Stickman Doodle: "minimalist stickman doodle, notebook sketch on lined paper, ballpoint pen, hand-drawn lines"
+- Gothic Horror: "dark gothic horror, eerie shadows, haunted aesthetic, dark misty forest, volumetric fog, Lovecraftian vibes"
+- Pencil Sketch: "charcoal drawing, graphite pencil sketch, rough cross-hatching shading, textured sketchbook paper"
+- Synthwave: "synthwave 80s retro neon, Outrun grid floor, giant magenta sun, VHS tape glitch, retrowave sunset"
+- Papercut Origami: "papercut layered origami craft, 3D paper shadowbox depth, layered cut-out textures"
+- Steampunk: "steampunk fantasy, brass gears, Victorian vintage tech, copper pipes, clockwork mechanisms"
+- Pop Art: "pop art Andy Warhol style, high contrast vibrant color blocks, screen print poster, halftone dots"
+- Low-Poly: "low-poly 3D geometric, flat shaded polygons, faceted blocky art, modern digital sculpture"
+
+---
+
+### INSTRUCTIONS:
+1. Divide the provided script into EXACTLY ${effectiveSettings.sceneCount || 5} distinct visual scenes.
+2. CRITICAL REQUIREMENT: All generated image prompts MUST be written strictly in clear, descriptive ENGLISH. If the video script is in Hindi or any non-English language, translate the visual descriptions into rich English prompts so Meta AI can generate them without error! Do NOT include Hindi text in the "prompt" field!
+3. Follow the PROMPT FORMULA and automatically enrich each scene using complementary selections from the Knowledge Base (Camera, Lighting, Environment, Color Grading, and Style specs).${styleInstructions}
+4. Output MUST be a valid JSON array of objects, with keys: "sceneNumber", "scriptExcerpt", and "prompt". Do NOT include markdown text formatting or codeblock ticks around the JSON.`;
 
     const userPrompt = `Script:\n${scriptText}`;
 
