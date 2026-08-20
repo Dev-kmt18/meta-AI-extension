@@ -6,6 +6,37 @@ export interface RawParsedScene {
   prompt?: string;
 }
 
+export const STYLE_PROMPT_MAP: Record<string, string> = {
+  'Photorealistic / 8K': 'photorealistic, 8k uhd, shot on 85mm lens, natural skin texture, volumetric natural lighting, sharp focus, cinematic depth of field',
+  '3D Pixar / Disney': '3D Disney Pixar animation style, cute expressive features, octane render, smooth textures, warm soft lighting',
+  'Japanese Anime / Ghibli': 'Studio Ghibli style, Hayao Miyazaki aesthetic, soft anime visual, hand-painted background, cel shading, cozy atmosphere',
+  'Vintage Comic Book': 'vintage 1960s comic book panel, bold ink outlines, halftone Ben-Day dots, retro pop art',
+  'Cyberpunk / Sci-Fi': 'cyberpunk aesthetic, glowing purple and cyan neon lights, rainy street reflections, volumetric fog, futuristic dystopia',
+  'Soft Watercolor Painting': 'soft watercolor painting, pastel color wash, bleeding ink edges, textured watercolor paper',
+  'Classic Renaissance Oil Painting': '16th century Renaissance oil painting, Rembrandt chiaroscuro lighting, thick impasto brushstrokes, canvas texture',
+  'Retro 16-Bit Pixel Art': '16-bit pixel art, isometric view, retro SNES game sprite, limited vibrant palette',
+  'Claymation / Stop-Motion': 'handcrafted claymation, plasticine clay texture, visible thumbprints, stop-motion animation look',
+  'Minimalist Vector / Flat Art': 'minimalist flat vector illustration, clean geometric lines, solid shapes, modern poster art',
+  'Stickman / Doodle Art': 'minimalist stickman doodle, notebook sketch on lined paper, ballpoint pen, hand-drawn lines',
+  'Dark Gothic Horror': 'dark gothic horror, eerie shadows, haunted aesthetic, dark misty forest, volumetric fog, Lovecraftian vibes',
+  'Charcoal & Pencil Sketch': 'charcoal drawing, graphite pencil sketch, rough cross-hatching shading, textured sketchbook paper',
+  'Synthwave / 80s Retro Neon': 'synthwave 80s retro neon, Outrun grid floor, giant magenta sun, VHS tape glitch, retrowave sunset',
+  'Papercut / 3D Origami': 'papercut layered origami craft, 3D paper shadowbox depth, layered cut-out textures',
+  'Steampunk Fantasy': 'steampunk fantasy, brass gears, Victorian vintage tech, copper pipes, clockwork mechanisms',
+  'Pop Art / Andy Warhol': 'pop art Andy Warhol style, high contrast vibrant color blocks, screen print poster, halftone dots',
+  'Low-Poly 3D Geometric': 'low-poly 3D geometric, flat shaded polygons, faceted blocky art, modern digital sculpture',
+
+  // Backwards compatibility mappings
+  'Cinematic': 'photorealistic, 8k uhd, shot on 85mm lens, natural skin texture, volumetric natural lighting, sharp focus, cinematic depth of field',
+  'Horror': 'dark gothic horror, eerie shadows, haunted aesthetic, dark misty forest, volumetric fog, Lovecraftian vibes',
+  'Funny': '3D Disney Pixar animation style, cute expressive features, octane render, smooth textures, warm soft lighting',
+  'Colorful': 'pop art Andy Warhol style, high contrast vibrant color blocks, screen print poster, halftone dots',
+  'Stick Man': 'minimalist stickman doodle, notebook sketch on lined paper, ballpoint pen, hand-drawn lines',
+  'Realistic': 'photorealistic, 8k uhd, shot on 85mm lens, natural skin texture, volumetric natural lighting, sharp focus, cinematic depth of field',
+  'Anime / Manga': 'Studio Ghibli style, Hayao Miyazaki aesthetic, soft anime visual, hand-painted background, cel shading, cozy atmosphere',
+  'Cyberpunk': 'cyberpunk aesthetic, glowing purple and cyan neon lights, rainy street reflections, volumetric fog, futuristic dystopia'
+};
+
 export const LlmService = {
   detectProviderAndModel(key: string): { provider: string; model: string } {
     const trimmed = key.trim();
