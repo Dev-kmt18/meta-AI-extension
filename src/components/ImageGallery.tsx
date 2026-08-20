@@ -28,9 +28,12 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
   onRetryFailed
 }) => {
   const [selectedPreviewImg, setSelectedPreviewImg] = useState<string | null>(null);
+
+  // Show only scenes that are currently generating or have finished generating
+  const visibleScenes = scenes.filter((s) => s.imageUrl || s.status === 'generating');
   const generatedScenes = scenes.filter((s) => s.imageUrl);
 
-  if (scenes.length === 0) return null;
+  if (visibleScenes.length === 0) return null;
 
   const selectedCount = scenes.filter((s) => s.selected && s.imageUrl).length;
   const allSelected = generatedScenes.length > 0 && generatedScenes.every((s) => s.selected);
@@ -86,8 +89,8 @@ export const ImageGallery: React.FC<ImageGalleryProps> = ({
 
       {/* Gallery Grid */}
       <div className="grid grid-cols-2 gap-3">
-        {scenes.map((scene, index) => {
-          const numStr = String(index + 1).padStart(2, '0');
+        {visibleScenes.map((scene) => {
+          const numStr = String(scene.sceneNumber).padStart(2, '0');
           return (
             <div
               key={scene.id}
