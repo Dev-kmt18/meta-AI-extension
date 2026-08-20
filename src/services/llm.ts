@@ -428,19 +428,38 @@ Your task is to take any raw/simple video script or idea, analyze its mood and c
     const result: Scene[] = [];
     const totalToGenerate = Math.max(1, sceneCount);
 
+    const narrativeActions = [
+      'opening establishing scene introducing the story setting and protagonist',
+      'pensive decision-making moment with character contemplating a crucial choice',
+      'dramatic reveals and heightened tension with intriguing visual focal point',
+      'suspenseful action beat with dynamic character movement and emotional stakes',
+      'intense psychological dilemma showing mysterious choices and consequences',
+      'climactic turning point with dramatic atmospheric lighting and contrast',
+      'emotional resolution shot with striking composition and rich visual detail',
+      'narrative transition beat capturing the evolving mystery of the story',
+      'close-up reaction angle highlighting intense emotion and suspense',
+      'sweeping visual perspective revealing hidden details in the environment'
+    ];
+
     for (let i = 0; i < totalToGenerate; i++) {
-      const excerpt = lines[i % Math.max(1, lines.length)] || `Scene ${i + 1} action narrative`;
+      // Divide script into N equal sequential character chunks
+      const chunkLength = Math.max(1, Math.floor(scriptText.length / totalToGenerate));
+      const startIdx = i * chunkLength;
+      const endIdx = i === totalToGenerate - 1 ? scriptText.length : (i + 1) * chunkLength;
+      const rawExcerpt = scriptText.substring(startIdx, endIdx).trim() || lines[i % Math.max(1, lines.length)] || `Part ${i + 1}`;
+
       const visualTemplate = uniqueVisualTemplates[i % uniqueVisualTemplates.length];
-      const hasNonAscii = /[^\x00-\x7F]/.test(excerpt);
+      const narrativeBeat = narrativeActions[i % narrativeActions.length];
+      const hasNonAscii = /[^\x00-\x7F]/.test(rawExcerpt);
 
       const promptText = hasNonAscii
-        ? `Visual scene showing: ${visualTemplate}, ${consistencyTag}, ${styleModifier}, ${qualityTag}, ${textTag}, aspect ratio: ${frame}`
-        : `Visual scene depicting: ${excerpt}. ${visualTemplate}, ${consistencyTag}, ${styleModifier}, ${qualityTag}, ${textTag}, aspect ratio: ${frame}`;
+        ? `Visual scene depicting story part ${i + 1} of ${totalToGenerate} (${narrativeBeat}), ${visualTemplate}, ${consistencyTag}, ${styleModifier}, ${qualityTag}, ${textTag}, aspect ratio: ${frame}`
+        : `Visual scene depicting: ${rawExcerpt}. ${visualTemplate}, ${consistencyTag}, ${styleModifier}, ${qualityTag}, ${textTag}, aspect ratio: ${frame}`;
 
       result.push({
         id: `scene-${Date.now()}-${i}`,
         sceneNumber: i + 1,
-        scriptExcerpt: excerpt.slice(0, 150) + (excerpt.length > 150 ? '...' : ''),
+        scriptExcerpt: rawExcerpt.slice(0, 150) + (rawExcerpt.length > 150 ? '...' : ''),
         prompt: promptText,
         status: 'pending',
         selected: true

@@ -173,13 +173,25 @@ export const ScriptInput: React.FC<ScriptInputProps> = ({
             </button>
           </div>
           <input
-            type="number"
-            min={1}
-            max={100}
-            value={sceneCount}
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            value={sceneCount === 0 ? '' : sceneCount}
             onChange={(e) => {
-              const val = parseInt(e.target.value, 10);
-              onSceneCountChange(isNaN(val) ? 1 : Math.max(1, Math.min(100, val)));
+              const raw = e.target.value;
+              if (raw === '') {
+                onSceneCountChange(0);
+                return;
+              }
+              const parsed = parseInt(raw.replace(/\D/g, ''), 10);
+              if (!isNaN(parsed)) {
+                onSceneCountChange(Math.min(100, parsed));
+              }
+            }}
+            onBlur={() => {
+              if (!sceneCount || sceneCount < 1) {
+                onSceneCountChange(1);
+              }
             }}
             placeholder="e.g. 10"
             className="w-full px-2.5 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-xs text-white font-mono font-bold focus:outline-none focus:border-blue-500"
